@@ -426,14 +426,14 @@ def traffic_step(args):
          sys.exit(6)       
     current_weight = rule[1]
     if not args.amount:
-        new_amount = float(current_weight) * 100 + 10
+        new_amount = int(float(current_weight) * 100) + 10
     else:
         if args.amount < 0 or args.amount > 100:
             print "--amount must be between 0 and 100"
             sys.exit(4)
         new_amount = args.amount
     if new_amount < 100:
-        service_info['selectors'] = "{%s={weight=%s}}" % (traffic_version, new_amount/100)
+        service_info['selectors'] = "{%s={weight=%s}}" % (traffic_version, float(new_amount)/100)
     else:
         new_amount = 100
         service_info['default'] = traffic_version
