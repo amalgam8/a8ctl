@@ -86,16 +86,16 @@ def main():
     # a8ctl rule-list
     parser_rules_list = \
         subparsers.add_parser('rule-list',
-                              description="List resiliency tesing rules.",
-                              help="List resiliency tesing rules."
+                              description="List fault injection rules.",
+                              help="List fault injection rules."
                               )
     parser_rules_list.set_defaults(func=commands.rules_list)
 
     # a8ctl gremlin rule-set ...
     parser_set_rules = \
         subparsers.add_parser('rule-set',
-                              description='Set a resiliency testing rule.',
-                              help='Set a resiliency testing rule.'
+                              description='Set a fault injection rule.',
+                              help='Set a fault injection rule.'
                               )
     parser_set_rules.set_defaults(func=commands.set_rule)
     parser_set_rules.add_argument("--source",
@@ -147,45 +147,43 @@ def main():
                                    help='Select only requests whose request tracking header matches the pattern',
                                    default='*')
 
-    # a8ctl rollout-start <service> <version> [--amount <percent>]
-    parser_rollout_start = \
-        subparsers.add_parser('rollout-start',
-                              description='Start rolling traffic to a new version of a microservice.',
-                              help='Start rolling traffic to a new version of a microservice.'
+    # a8ctl traffic-start <service> <version> [--amount <percent>]
+    parser_traffic_start = \
+        subparsers.add_parser('traffic-start',
+                              description='Start trasferring traffic to a new version of a microservice.',
+                              help='Start trasferring traffic to a new version of a microservice.'
                               )
-    parser_rollout_start.set_defaults(func=commands.rollout_start)
-    parser_rollout_start.add_argument("service",
+    parser_traffic_start.set_defaults(func=commands.traffic_start)
+    parser_traffic_start.add_argument("service",
                                       help='The microservice name')
-    parser_rollout_start.add_argument("version",
-                                      help='The new version to rollout')
-    parser_rollout_start.add_argument("--amount",
-                                      help='A percentage of traffic 0-100 to step',
+    parser_traffic_start.add_argument("version",
+                                      help='The new version to traffic')
+    parser_traffic_start.add_argument("--amount",
+                                      help='A percentage of traffic 0-100 to send to the new version (default is 10%)',
                                       type=int,
                                       default=10)
 
-    # a8ctl rollout-step <service> [--amount <percent>]
-    parser_rollout_step = \
-        subparsers.add_parser('rollout-step',
+    # a8ctl traffic-step <service> [--amount <percent>]
+    parser_traffic_step = \
+        subparsers.add_parser('traffic-step',
                               description='Step up the amount of traffic to a new version of a microservice.',
                               help='Step up the amount of traffic to a new version of a microservice.'
                               )
-    parser_rollout_step.set_defaults(func=commands.rollout_step)
-    parser_rollout_step.add_argument("service",
+    parser_traffic_step.set_defaults(func=commands.traffic_step)
+    parser_traffic_step.add_argument("service",
                                      help='The microservice name')
-    parser_rollout_step.add_argument("--amount",
-                                     help='A percentage of traffic 0-100 to step',
-                                     type=int,
-                                     default=10)
+    parser_traffic_step.add_argument("--amount",
+                                     help='A percentage of traffic 0-100 to send to the new version (default is current + 10%)',
+                                     type=int)
 
-
-    # a8ctl rollout-abort <service>
-    parser_rollout_abort = \
-        subparsers.add_parser('rollout-abort',
-                              description='Abort rollout of new version of a microservice.',
-                              help='Abort rollout of new version of a microservice.'
+    # a8ctl traffic-abort <service>
+    parser_traffic_abort = \
+        subparsers.add_parser('traffic-abort',
+                              description='Abort transferring traffic to a new version of a microservice.',
+                              help='Abort transferring traffic to a new version of a microservice.'
                               )
-    parser_rollout_abort.set_defaults(func=commands.rollout_abort)
-    parser_rollout_abort.add_argument("service",
+    parser_traffic_abort.set_defaults(func=commands.traffic_abort)
+    parser_traffic_abort.add_argument("service",
                                       help='The microservice name')
 
     args = parser.parse_args()

@@ -18,7 +18,7 @@ setup(
         "argparse",
         "requests",
         "parse",
-        "pygremlin"
+        "pygremlin>=0.1.3"
     ],
     license='Apache Software License V2'
 )

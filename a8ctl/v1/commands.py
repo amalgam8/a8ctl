@@ -283,7 +283,7 @@ def set_rule(args):
                json.dumps(payload),
                showcurl=args.debug)
     fail_unless(r, 200)
-    print 'Set resiliency test rule between %s and %s' % (args.source, args.destination)
+    print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
 
@@ -375,7 +375,7 @@ def run_recipe(args):
         #     exit_status = 1
         # sys.exit(exit_status)
 
-def rollout_start(args):
+def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
          print "--amount must be between 0 and 100"
          sys.exit(4)
@@ -401,14 +401,11 @@ def rollout_start(args):
                showcurl=args.debug)
     fail_unless(r, 200)
     if args.amount == 100:
-        print 'Rollout complete for {}: sending {}% of traffic to {}'.format(args.service, args.amount, args.version)
+        print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, args.amount, args.version)
     else:
-        print 'Rollout starting for {}: diverting {}% of traffic from {} to {}'.format(args.service, args.amount, default_version, args.version)
+        print 'Transfer starting for {}: diverting {}% of traffic from {} to {}'.format(args.service, args.amount, default_version, args.version)
 
-def rollout_step(args):
-    if args.amount < 0 or args.amount > 100:
-         print "--amount must be between 0 and 100"
-         sys.exit(4)
+def traffic_step(args):
     r = a8_get('{0}/v1/tenants/{1}/versions/{2}'.format(args.a8_url, args.a8_tenant_id, args.service), args.a8_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
@@ -422,18 +419,24 @@ def rollout_step(args):
          print "Invalid state for step operation"
          sys.exit(5)
     r = SELECTOR_PARSER.parse(selector_list[0].replace("{","#").replace("}","#"))
-    rollout_version = r['version']
+    traffic_version = r['version']
     rule = r['rule'].split("=")
     if rule[0].strip() != "weight":
          print "Invalid state for step operation"
          sys.exit(6)       
     current_weight = rule[1]
-    new_amount = float(current_weight) * 100 + args.amount
+    if not args.amount:
+        new_amount = float(current_weight) * 100 + 10
+    else:
+        if args.amount < 0 or args.amount > 100:
+            print "--amount must be between 0 and 100"
+            sys.exit(4)
+        new_amount = args.amount
     if new_amount < 100:
-        service_info['selectors'] = "{%s={weight=%s}}" % (rollout_version, new_amount/100)
+        service_info['selectors'] = "{%s={weight=%s}}" % (traffic_version, new_amount/100)
     else:
         new_amount = 100
-        service_info['default'] = rollout_version
+        service_info['default'] = traffic_version
         service_info['selectors'] = None
     r = a8_put('{0}/v1/tenants/{1}/versions/{2}'.format(args.a8_url, args.a8_tenant_id, args.service),
                args.a8_token, 
@@ -441,11 +444,11 @@ def rollout_step(args):
                showcurl=args.debug)
     fail_unless(r, 200)
     if new_amount == 100:
-        print 'Rollout complete for {}: sending {}% of traffic to {}'.format(args.service, new_amount, rollout_version)
+        print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, new_amount, traffic_version)
     else:
-        print 'Rollout step for {}: diverting {}% of traffic from {} to {}'.format(args.service, new_amount, default_version, rollout_version)
+        print 'Transfer step for {}: diverting {}% of traffic from {} to {}'.format(args.service, new_amount, default_version, traffic_version)
 
-def rollout_abort(args):
+def traffic_abort(args):
     r = a8_get('{0}/v1/tenants/{1}/versions/{2}'.format(args.a8_url, args.a8_tenant_id, args.service), args.a8_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
@@ -461,4 +464,4 @@ def rollout_abort(args):
                json.dumps(service_info),
                showcurl=args.debug)
     fail_unless(r, 200)
-    print 'Rollout aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
+    print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
