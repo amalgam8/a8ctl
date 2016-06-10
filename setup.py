@@ -18,12 +18,12 @@ description = open('README.rst').read()
 
 setup(
     name="a8ctl",
-    version="0.1",
+    version="0.1.2",
     description="Amalgam8 Command Line Interface",
     long_description=description,
     author='Amalgam8 Team',
-    url='https://github.com/amalgam8/controller/tree/master/cli',
-    packages=["a8ctl"],
+    url='https://github.com/amalgam8/a8ctl',
+    packages=["a8ctl", "a8ctl.v1"],
     entry_points = {
         "console_scripts": ['a8ctl = a8ctl.v1.a8ctl:main']
     },
@@ -32,7 +32,7 @@ setup(
         "argparse",
         "requests",
         "parse",
-        "pygremlin"
+        "pygremlin>=0.1.3"
     ],
     license='Apache Software License V2'
 )
