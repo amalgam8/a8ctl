@@ -33,6 +33,7 @@ setup(
         "requests",
         "parse",
         "prettytable",
+        "decorator",
         "pygremlin>=0.1.3"
     ],
     license='Apache Software License V2'
