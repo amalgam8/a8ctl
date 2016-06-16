@@ -4,7 +4,7 @@ description = open('README.rst').read()
 
 setup(
     name="a8ctl",
-    version="0.1.2",
+    version="0.1.3",
     description="Amalgam8 Command Line Interface",
     long_description=description,
     author='Amalgam8 Team',
@@ -18,6 +18,7 @@ setup(
         "argparse",
         "requests",
         "parse",
+        "prettytable",
         "pygremlin>=0.1.3"
     ],
     license='Apache Software License V2'
