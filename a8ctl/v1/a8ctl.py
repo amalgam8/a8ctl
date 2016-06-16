@@ -40,18 +40,23 @@ def main():
                         action='store_true',
                         default=os.getenv('A8_DEBUG')=='1'
                         )
+
     parser.add_argument('--a8-url',
                         help='override $A8_CONTROLLER_URL with url of Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_URL', 'http://192.168.33.33:31200'))
-    parser.add_argument('--a8-registry-url',
-                        help='override $A8_REGISTRY_URL with url of Amalgam8 Registry',
-                        default=os.getenv('A8_REGISTRY_URL', 'http://192.168.33.33:31300'))
     parser.add_argument('--a8-token',
                         help='override $A8_CONTROLLER_TOKEN with token for Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_TOKEN', '12345'))
     parser.add_argument('--a8-tenant-id',
                         help='override $A8_CONTROLLER_TENANT_ID with tenant-id for Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_TENANT_ID', 'local'))
+
+    parser.add_argument('--a8-registry-url',
+                        help='override $A8_REGISTRY_URL with url of Amalgam8 Registry',
+                        default=os.getenv('A8_REGISTRY_URL', None))
+    parser.add_argument('--a8-registry-token',
+                        help='override $A8_REGISTRY_TOKEN with token of Amalgam8 Registry',
+                        default=os.getenv('A8_REGISTRY_TOKEN', None))
     
     subparsers = parser.add_subparsers(help='', # 2nd column heading over subcommand name
                                        dest='subparser_name',

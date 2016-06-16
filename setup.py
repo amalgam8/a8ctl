@@ -18,7 +18,7 @@ description = open('README.rst').read()
 
 setup(
     name="a8ctl",
-    version="0.1.3",
+    version="0.1.4",
     description="Amalgam8 Command Line Interface",
     long_description=description,
     author='Amalgam8 Team',

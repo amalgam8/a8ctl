@@ -148,9 +148,11 @@ def fail_unless(response, code_or_codes):
         print response.text
         sys.exit(3)
 
-def get_registry_credentials(tenant_info):
+def get_registry_credentials(tenant_info, args):
     registry = tenant_info["credentials"]["registry"]
-    return registry["url"], "Bearer " + registry["token"]
+    registry_url = registry["url"] if args.a8_registry_url is None else args.a8_registry_url
+    registry_token = registry["token"] if args.a8_registry_token is None else args.a8_registry_token
+    return registry_url, "Bearer " + registry_token
     
 NO_VERSION = "UNVERSIONED"
 SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in format
@@ -163,9 +165,7 @@ def service_list(args):
     r = a8_get('{0}/v1/tenants/{1}'.format(args.a8_url, args.a8_tenant_id), args.a8_token, showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
-    registry_url, registry_token = get_registry_credentials(tenant_info)
-    if args.a8_registry_url is not None:
-        registry_url = args.a8_registry_url
+    registry_url, registry_token = get_registry_credentials(tenant_info, args)
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
@@ -189,9 +189,7 @@ def service_routing(args):
     r = a8_get('{0}/v1/tenants/{1}'.format(args.a8_url, args.a8_tenant_id), args.a8_token, showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
-    registry_url, registry_token = get_registry_credentials(tenant_info)
-    if args.a8_registry_url is not None:
-        registry_url = args.a8_registry_url
+    registry_url, registry_token = get_registry_credentials(tenant_info, args)
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
