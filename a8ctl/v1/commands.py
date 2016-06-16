@@ -164,6 +164,8 @@ def service_list(args):
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info)
+    if args.a8_registry_url is not None:
+            registry_url = args.a8_registry_url
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
@@ -188,6 +190,8 @@ def service_routing(args):
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info)
+    if args.a8_registry_url is not None:
+        registry_url = args.a8_registry_url
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
