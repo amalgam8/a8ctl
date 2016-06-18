@@ -43,7 +43,7 @@ def main():
 
     parser.add_argument('--a8-url',
                         help='override $A8_CONTROLLER_URL with url of Amalgam8 Controller',
-                        default=os.getenv('A8_CONTROLLER_URL', 'http://192.168.33.33:31200'))
+                        default=os.getenv('A8_CONTROLLER_URL', 'http://localhost:31200'))
     parser.add_argument('--a8-token',
                         help='override $A8_CONTROLLER_TOKEN with token for Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_TOKEN', '12345'))
@@ -183,7 +183,7 @@ def main():
     parser_traffic_start.add_argument("version",
                                       help='The new version to traffic')
     parser_traffic_start.add_argument("--amount",
-                                      help='A percentage of traffic 0-100 to send to the new version (default is 10%)',
+                                      help='A percentage of traffic 0-100 to send to the new version (default is 10 percent)',
                                       type=int,
                                       default=10)
 
@@ -197,7 +197,7 @@ def main():
     parser_traffic_step.add_argument("service",
                                      help='The microservice name')
     parser_traffic_step.add_argument("--amount",
-                                     help='A percentage of traffic 0-100 to send to the new version (default is current + 10%)',
+                                     help='A percentage of traffic 0-100 to send to the new version (default is current + 10 percent)',
                                      type=int)
 
     # a8ctl traffic-abort <service>
