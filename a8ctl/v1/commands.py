@@ -20,7 +20,6 @@ import json
 import sets
 from urlparse import urlparse
 from prettytable import PrettyTable
-import yaml
 import os
 import urllib
 import datetime, time

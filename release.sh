@@ -1,5 +1,5 @@
 #!/bin/bash
-#apt-get install -y python-dev python-virtualenv
+#sudo apt-get install -y python-dev python-virtualenv
 virtualenv /tmp/cli
 source /tmp/cli/bin/activate
 cp -R . /tmp/cli
