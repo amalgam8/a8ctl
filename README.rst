@@ -1,7 +1,7 @@
 Amalgam8 Command Line Interface (CLI)
 =====================================
 
-Command-line tool for Amalgam8 Microservices Fabric (http://www.amalgam8.io/).
+Command-line tool for Amalgam8 (http://www.amalgam8.io/).
 
 Installation
 ------------
@@ -12,7 +12,7 @@ To install the Amalgam8 CLI:
 
     pip install a8ctl
 
-For usage information, execute the following command:
+For usage information, run the following command:
 
 .. code:: bash
 
