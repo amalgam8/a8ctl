@@ -152,7 +152,17 @@ def get_registry_credentials(tenant_info, args):
     registry_url = registry["url"] if args.a8_registry_url is None else args.a8_registry_url
     registry_token = registry["token"] if args.a8_registry_token is None else args.a8_registry_token
     return registry_url, "Bearer " + registry_token
-    
+
+def is_active(service, default_version, registry_url, registry_token, debug=False):
+    r = a8_get('{0}/api/v1/services/{1}'.format(registry_url, service), registry_token, showcurl=debug)
+    if r.status_code == 200:
+        instance_list = r.json()["instances"]
+        for instance in instance_list:
+            version = instance["metadata"]["version"] if "metadata" in instance and "version" in instance["metadata"] else NO_VERSION
+            if version == default_version:
+                return True
+    return False
+   
 NO_VERSION = "UNVERSIONED"
 SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in format
 
@@ -399,13 +409,23 @@ def traffic_start(args):
     if r.status_code == 200:
         service_info = r.json()
         if service_info['selectors']:
-            print "Invalid state for start operation"
+            print "Invalid state for start operation: service \"%s\" traffic is already being split" % args.service
             sys.exit(5)
     else:
         service_info = {}
     default_version = service_info.get('default')
     if not default_version:
         default_version = NO_VERSION
+    r = a8_get('{0}/v1/tenants/{1}'.format(args.a8_url, args.a8_tenant_id), args.a8_token, showcurl=args.debug)
+    fail_unless(r, 200)
+    tenant_info = r.json()
+    registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    if not is_active(args.service, default_version, registry_url, registry_token, args.debug):
+        print "Invalid state for start operation: service \"%s\" is not currently receiving traffic" % args.service
+        sys.exit(6)
+    if not is_active(args.service, args.version, registry_url, registry_token, args.debug):
+        print "Invalid state for start operation: service \"%s\" does not have active instances of version \"%s\"" % (args.service, args.version)
+        sys.exit(7)
     if args.amount == 100:
         service_info['default'] = args.version
     else:
