@@ -57,6 +57,10 @@ def main():
     parser.add_argument('--a8-registry-token',
                         help='override $A8_REGISTRY_TOKEN with token of Amalgam8 Registry',
                         default=os.getenv('A8_REGISTRY_TOKEN', None))
+
+    parser.add_argument('--a8-log-server',
+                        help='override $A8_LOG_SERVER with log server for Amalgam8 log messages',
+                        default=os.getenv('A8_LOG_SERVER', 'localhost:30200'))
     
     subparsers = parser.add_subparsers(help='', # 2nd column heading over subcommand name
                                        dest='subparser_name',

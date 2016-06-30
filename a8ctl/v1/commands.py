@@ -390,7 +390,8 @@ def run_recipe(args):
         print end_time
         #sleep for some more time to make sure all logs have been flushed
         time.sleep(5)
-        ac = A8AssertionChecker(checklist['log_server'], None, header=header, pattern=pattern, start_time=start_time, end_time=end_time, debug=args.debug)
+        log_server = checklist.get('log_server', args.a8_log_server)
+        ac = A8AssertionChecker(log_server, None, header=header, pattern=pattern, start_time=start_time, end_time=end_time, debug=args.debug)
         results = ac.check_assertions(checklist, continue_on_error=True)
         _print_assertion_results(results)
         clear_rules(args)
