@@ -10,7 +10,8 @@ To install the Amalgam8 CLI:
 
 .. code:: bash
 
-    pip install a8ctl
+    pip install a8ctl # for latest
+    pip install a8ctl==<version> # for specific version, e.g., pip install a8ctl==0.1.7
 
 For usage information, run the following command:
 
