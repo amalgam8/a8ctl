@@ -38,7 +38,7 @@ def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, e
     headers['Authorization'] = token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
-    
+
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
         print "curl", curl_headers, url
@@ -64,7 +64,7 @@ def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-ty
     headers['Authorization'] = token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
-    
+
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
         print "REQ:", "curl -i -X POST", url, curl_headers, "--data", '\'{0}\''.format(body.replace('\'', '\\\''))
@@ -92,7 +92,7 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
     headers['Authorization'] = token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
-    
+
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
         print "REQ:", "curl -i -X PUT", url, curl_headers, "--data", '\'{0}\''.format(body.replace('\'', '\\\''))
@@ -118,7 +118,7 @@ def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False
 
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
-    
+
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
         print "curl -X DELETE", curl_headers, url
@@ -162,7 +162,7 @@ def is_active(service, default_version, registry_url, registry_token, debug=Fals
             if version == default_version:
                 return True
     return False
-   
+
 NO_VERSION = "UNVERSIONED"
 SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in format
 
@@ -171,7 +171,10 @@ SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in 
 ############################################
 
 def service_list(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -195,7 +198,10 @@ def service_list(args):
     print x
 
 def service_routing(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -247,21 +253,26 @@ def set_routing(args):
         routing_request['selectors'] = "{" + ",".join(selector_list) + "}"
 
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token, 
+               args.a8_token,
                json.dumps(routing_request),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     print 'Set routing rules for microservice', args.service
 
 def delete_routing(args):
     r = a8_delete('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token, 
-               showcurl=args.debug)
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     print 'Deleted routing rules for microservice', args.service
 
 def rules_list(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     tenant_info = r.json()
     x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
@@ -304,18 +315,20 @@ def set_rule(args):
         payload['req_tracking_header'] = args.header
 
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
-               args.a8_token, 
+               args.a8_token,
                json.dumps(payload),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
 
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
-               args.a8_token, 
+               args.a8_token,
                json.dumps({"filters":{"rules":[]}}),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
 
@@ -375,7 +388,7 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_url=args.a8_url, a8_token=args.a8_token,
+    fg = A8FailureGenerator(topology, a8_url=args.a8_url, a8_token=args.a8_token, a8_tenant_id=args.a8_tenant_id,
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
     start_time = datetime.datetime.utcnow().isoformat()
@@ -405,7 +418,10 @@ def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
          print "--amount must be between 0 and 100"
          sys.exit(4)
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, [200, 404])
     if r.status_code == 200:
         service_info = r.json()
@@ -417,7 +433,10 @@ def traffic_start(args):
     default_version = service_info.get('default')
     if not default_version:
         default_version = NO_VERSION
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -432,9 +451,10 @@ def traffic_start(args):
     else:
         service_info['selectors'] = "{%s={weight=%s}}" % (args.version, float(args.amount)/100)
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token, 
+               args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     if args.amount == 100:
         print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, args.amount, args.version)
@@ -442,7 +462,10 @@ def traffic_start(args):
         print 'Transfer starting for {}: diverting {}% of traffic from {} to {}'.format(args.service, args.amount, default_version, args.version)
 
 def traffic_step(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     service_info = r.json()
     default_version = service_info.get('default')
@@ -459,7 +482,7 @@ def traffic_step(args):
     rule = r['rule'].split("=")
     if rule[0].strip() != "weight":
          print "Invalid state for step operation"
-         sys.exit(6)       
+         sys.exit(6)
     current_weight = rule[1]
     if not args.amount:
         new_amount = int(float(current_weight) * 100) + 10
@@ -475,9 +498,10 @@ def traffic_step(args):
         service_info['default'] = traffic_version
         service_info['selectors'] = None
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token, 
+               args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     if new_amount == 100:
         print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, new_amount, traffic_version)
@@ -485,7 +509,10 @@ def traffic_step(args):
         print 'Transfer step for {}: diverting {}% of traffic from {} to {}'.format(args.service, new_amount, default_version, traffic_version)
 
 def traffic_abort(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service), args.a8_token, showcurl=args.debug)
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
+               args.a8_token,
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID' : args.a8_tenant_id})
     fail_unless(r, 200)
     service_info = r.json()
     if not service_info['selectors']:
@@ -496,8 +523,9 @@ def traffic_abort(args):
         default_version = NO_VERSION
     service_info['selectors'] = None
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token, 
+               args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug)
+               showcurl=args.debug,
+               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
     fail_unless(r, 200)
     print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
