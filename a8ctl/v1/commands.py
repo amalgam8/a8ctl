@@ -382,7 +382,7 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_url=args.a8_url, a8_token=args.a8_token, a8_tenant_id=args.a8_tenant_id,
+    fg = A8FailureGenerator(topology, a8_url='{0}/v1/tenants'.format(args.a8_url), a8_token=args.a8_token, a8_tenant_id=args.a8_tenant_id,
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
     start_time = datetime.datetime.utcnow().isoformat()
