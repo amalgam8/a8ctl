@@ -173,8 +173,7 @@ SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in 
 def service_list(args):
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -200,8 +199,7 @@ def service_list(args):
 def service_routing(args):
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -255,16 +253,14 @@ def set_routing(args):
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
                json.dumps(routing_request),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     print 'Set routing rules for microservice', args.service
 
 def delete_routing(args):
     r = a8_delete('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     print 'Deleted routing rules for microservice', args.service
 
@@ -272,7 +268,7 @@ def rules_list(args):
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
                args.a8_token,
                showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               )
     fail_unless(r, 200)
     tenant_info = r.json()
     x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
@@ -317,8 +313,7 @@ def set_rule(args):
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
                args.a8_token,
                json.dumps(payload),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
@@ -327,8 +322,7 @@ def clear_rules(args):
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
                args.a8_token,
                json.dumps({"filters":{"rules":[]}}),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
 
@@ -420,8 +414,7 @@ def traffic_start(args):
          sys.exit(4)
     r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, [200, 404])
     if r.status_code == 200:
         service_info = r.json()
@@ -435,8 +428,7 @@ def traffic_start(args):
         default_version = NO_VERSION
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
     registry_url, registry_token = get_registry_credentials(tenant_info, args)
@@ -453,8 +445,7 @@ def traffic_start(args):
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     if args.amount == 100:
         print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, args.amount, args.version)
@@ -464,8 +455,7 @@ def traffic_start(args):
 def traffic_step(args):
     r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
     default_version = service_info.get('default')
@@ -500,8 +490,7 @@ def traffic_step(args):
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     if new_amount == 100:
         print 'Transfer complete for {}: sending {}% of traffic to {}'.format(args.service, new_amount, traffic_version)
@@ -511,8 +500,7 @@ def traffic_step(args):
 def traffic_abort(args):
     r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID' : args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
     if not service_info['selectors']:
@@ -525,7 +513,6 @@ def traffic_abort(args):
     r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
                args.a8_token,
                json.dumps(service_info),
-               showcurl=args.debug,
-               extra_headers={'SP-Tenant-ID':args.a8_tenant_id})
+               showcurl=args.debug)
     fail_unless(r, 200)
     print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
