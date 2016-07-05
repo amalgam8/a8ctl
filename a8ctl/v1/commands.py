@@ -267,8 +267,7 @@ def delete_routing(args):
 def rules_list(args):
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
                args.a8_token,
-               showcurl=args.debug,
-               )
+               showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
     x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
