@@ -34,7 +34,7 @@ setup(
         "parse",
         "prettytable",
         "decorator",
-        "pygremlin==0.1.5"
+        "pygremlin==0.1.4"
     ],
     license='Apache Software License V2'
 )
