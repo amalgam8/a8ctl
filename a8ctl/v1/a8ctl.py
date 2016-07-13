@@ -74,6 +74,9 @@ def main():
                               description="List managed microservices.",
                               help="List managed microservices."
                               )
+    parser_service_list.add_argument("--json",
+                                     help='Output services in JSON format', 
+                                     action='store_true')
     parser_service_list.set_defaults(func=commands.service_list)
 
     # a8ctl route-list
@@ -82,6 +85,9 @@ def main():
                               description="List microservices version routing rules.",
                               help="List microservices version routing rules."
                               )
+    parser_service_routing.add_argument("--json",
+                                        help='Output routes in JSON format', 
+                                        action='store_true')
     parser_service_routing.set_defaults(func=commands.service_routing)
 
     # a8ctl route-set <service> [--default version] [--selector version(condition)]*
@@ -114,6 +120,9 @@ def main():
                               description="List fault injection rules.",
                               help="List fault injection rules."
                               )
+    parser_rules_list.add_argument("--json",
+                                   help='Output injection rules in JSON format', 
+                                   action='store_true')
     parser_rules_list.set_defaults(func=commands.rules_list)
 
     # a8ctl gremlin rule-set ...

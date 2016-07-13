@@ -180,8 +180,7 @@ def service_list(args):
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
-    x = PrettyTable(["Service", "Instances"])
-    x.align = "l"
+    result_list = []
     for service in service_list:
         r = a8_get('{0}/api/v1/services/{1}'.format(registry_url, service), registry_token, showcurl=args.debug)
         fail_unless(r, 200)
@@ -190,11 +189,20 @@ def service_list(args):
         for instance in instance_list:
             version = instance["metadata"]["version"] if "metadata" in instance and "version" in instance["metadata"] else NO_VERSION
             version_counts[version] = version_counts.get(version, 0) + 1
-        formatted_versions = ""
+        result_instances = []
         for version, count in version_counts.iteritems():
-            formatted_versions += ", %s(%s)" % (version, count)
-        x.add_row([service, formatted_versions[2:]])
-    print x
+            result_instances.append("%s(%s)" % (version, count))
+        result_list.append({"service": service, "instances": result_instances})
+    if args.json:
+        print json.dumps(result_list, indent=2)
+    else:
+        x = PrettyTable(["Service", "Instances"])
+        x.align = "l"
+        for entry in result_list:
+            service = entry["service"]
+            versions = ", ".join(entry["instances"])
+            x.add_row([service, versions])
+        print x
 
 def service_routing(args):
     r = a8_get('{0}/v1/tenants'.format(args.a8_url),
@@ -206,8 +214,7 @@ def service_routing(args):
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
-    x = PrettyTable(["Service", "Default Version", "Version Selectors"])
-    x.align = "l"
+    result_list = []
     for value in tenant_info['filters']['versions']:
         service = get_field(value, 'service')
         if service in service_list:
@@ -223,16 +230,22 @@ def service_routing(args):
             for selector in selector_list:
                 r = SELECTOR_PARSER.parse(selector.replace("{","#").replace("}","#"))
                 versions.append("%s(%s)" % (r['version'], r['rule']))
-        x.add_row([service,
-                   default,
-                   ", ".join(versions)
-                   ])
+            result_list.append({"service": service, "default": default, "selectors": versions})
+        else:
+            result_list.append({"service": service, "default": default})
     for service in service_list:
-        x.add_row([service,
-                   NO_VERSION,
-                   ""
-                   ])
-    print x
+        result_list.append({"service": service, "default": NO_VERSION})
+    if args.json:
+        print json.dumps(result_list, indent=2)
+    else:
+        x = PrettyTable(["Service", "Default Version", "Version Selectors"])
+        x.align = "l"
+        for entry in result_list:
+            x.add_row([entry["service"],
+                       entry["default"],
+                       ", ".join(entry["selectors"]) if "selectors" in entry else ""
+                       ])
+        print x
 
 def set_routing(args):
     if not args.default and not args.selector:
@@ -270,19 +283,32 @@ def rules_list(args):
                showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
-    x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
-    x.align = "l"
+    result_list = []
     for value in tenant_info['filters']['rules']:
-        x.add_row([get_field(value, 'source'),
-                   get_field(value, 'destination'),
-                   get_field(tenant_info, 'req_tracking_header'),
-                   get_field(value, 'pattern'),
-                   get_field(value, 'delay_probability'),
-                   get_field(value, 'delay'),
-                   get_field(value, 'abort_probability'),
-                   get_field(value, 'return_code')
-                   ])
-    print x
+        result_list.append({"source": value["source"],
+                            "destination": value["destination"],
+                            "header": tenant_info["req_tracking_header"],
+                            "header_pattern": value["pattern"],
+                            "delay_probability": value["delay_probability"],
+                            "delay": value["delay"],
+                            "abort_probability": value["abort_probability"],
+                            "abort_code": value["return_code"]})
+    if args.json:
+        print json.dumps(result_list, indent=2)
+    else:
+        x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
+        x.align = "l"
+        for entry in result_list:
+            x.add_row([entry["source"],
+                       entry["destination"],
+                       entry["header"],
+                       entry["header_pattern"],
+                       entry["delay_probability"],
+                       entry["delay"],
+                       entry["abort_probability"],
+                       entry["abort_code"]
+            ])
+        print x
 
 def set_rule(args):
     if not args.source and not args.destination:
