@@ -287,7 +287,7 @@ def rules_list(args):
     for value in tenant_info['filters']['rules']:
         result_list.append({"source": value["source"],
                             "destination": value["destination"],
-                            "header": tenant_info["req_tracking_header"],
+                            "header": value["header"],
                             "header_pattern": value["pattern"],
                             "delay_probability": value["delay_probability"],
                             "delay": value["delay"],
@@ -311,17 +311,21 @@ def rules_list(args):
         print x
 
 def set_rule(args):
-    if not args.source and not args.destination:
-         print "You must specify --source and --destination"
+    if not args.source or not args.destination or not args.header:
+         print "You must specify --source, --destination, and --header"
          sys.exit(4)
 
     rule_request = {
         "source": args.source,
-        "destination": args.destination
+        "destination": args.destination,
+        "header" : args.header
     }
 
     if args.pattern:
         rule_request['pattern'] = '.*?'+args.pattern
+    else:
+        rule_request['pattern'] = '.*'
+
     if args.delay:
         rule_request['delay'] = args.delay
     if args.delay_probability:
@@ -331,9 +335,11 @@ def set_rule(args):
     if args.abort_code:
         rule_request['return_code'] = args.abort_code
 
+    if not (args.delay > 0 and args.delay_probability > 0.0) and not (args.abort_code and args.abort_probability > 0.0):
+        print "You must specify either a valid delay with non-zero delay_probability or a valid abort-code with non-zero abort-probability"
+        sys.exit(4)
+
     payload = {"filters":{"rules":[rule_request]}}
-    if args.header:
-        payload['req_tracking_header'] = args.header
 
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
                args.a8_token,

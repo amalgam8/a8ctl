@@ -150,7 +150,7 @@ def main():
                                   help='Percentage of requests to abort',
                                   type=float)
     parser_set_rules.add_argument("--abort-code",
-                                  help='HTTP error code to return to caller. Specify 0 to close TCP connection',
+                                  help='HTTP error code to return to caller. Specify -1 to close TCP connection',
                                   type=int)
 
     # a8ctl gremlin recipe-run ...
