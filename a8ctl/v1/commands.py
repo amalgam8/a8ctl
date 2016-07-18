@@ -287,7 +287,7 @@ def rules_list(args):
     for value in tenant_info['filters']['rules']:
         result_list.append({"source": value["source"],
                             "destination": value["destination"],
-                            "header": tenant_info["req_tracking_header"],
+                            "header": value["header"],
                             "header_pattern": value["pattern"],
                             "delay_probability": value["delay_probability"],
                             "delay": value["delay"],
@@ -330,10 +330,10 @@ def set_rule(args):
         rule_request['abort_probability'] = args.abort_probability
     if args.abort_code:
         rule_request['return_code'] = args.abort_code
+    if args.header:
+        rule_request['header'] = args.header
 
     payload = {"filters":{"rules":[rule_request]}}
-    if args.header:
-        payload['req_tracking_header'] = args.header
 
     r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
                args.a8_token,
