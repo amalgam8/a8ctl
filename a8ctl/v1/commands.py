@@ -413,7 +413,7 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_url='{0}/v1/tenants'.format(args.a8_url), a8_token=args.a8_token, a8_tenant_id=args.a8_tenant_id,
+    fg = A8FailureGenerator(topology, a8_url='{0}/v1/tenants'.format(args.a8_url), a8_token=args.a8_token, 
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
     start_time = datetime.datetime.utcnow().isoformat()
@@ -429,7 +429,7 @@ def run_recipe(args):
         #sleep for some more time to make sure all logs have been flushed
         time.sleep(5)
         log_server = checklist.get('log_server', args.a8_log_server)
-        ac = A8AssertionChecker(log_server, None, header=header, pattern=pattern, start_time=start_time, end_time=end_time, debug=args.debug)
+        ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern, start_time=start_time, end_time=end_time, debug=args.debug)
         results = ac.check_assertions(checklist, continue_on_error=True)
         _print_assertion_results(results)
         clear_rules(args)
