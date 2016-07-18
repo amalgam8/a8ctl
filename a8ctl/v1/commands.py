@@ -334,6 +334,8 @@ def set_rule(args):
         rule_request['abort_probability'] = args.abort_probability
     if args.abort_code:
         rule_request['return_code'] = args.abort_code
+    if args.header:
+        rule_request['header'] = args.header
 
     if not (args.delay > 0 and args.delay_probability > 0.0) and not (args.abort_code and args.abort_probability > 0.0):
         print "You must specify either a valid delay with non-zero delay_probability or a valid abort-code with non-zero abort-probability"
