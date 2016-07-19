@@ -278,13 +278,13 @@ def delete_routing(args):
     print 'Deleted routing rules for microservice', args.service
 
 def rules_list(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
+    r = a8_get('{0}/v1/rules'.format(args.a8_url),
                args.a8_token,
                showcurl=args.debug)
     fail_unless(r, 200)
-    tenant_info = r.json()
+    response = r.json()
     result_list = []
-    for value in tenant_info['filters']['rules']:
+    for value in response['rules']:
         result_list.append({"source": value["source"],
                             "destination": value["destination"],
                             "header": value["header"],
@@ -339,21 +339,20 @@ def set_rule(args):
         print "You must specify either a valid delay with non-zero delay_probability or a valid abort-code with non-zero abort-probability"
         sys.exit(4)
 
-    payload = {"filters":{"rules":[rule_request]}}
+    payload = {"rules": [rule_request]}
 
-    r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
-               args.a8_token,
-               json.dumps(payload),
-               showcurl=args.debug)
+    r = a8_post('{}/v1/rules'.format(args.a8_url),
+                args.a8_token,
+                json.dumps(payload),
+                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
 
-    r = a8_put('{0}/v1/tenants'.format(args.a8_url), # TODO: use an API that won't wipe out other rules
-               args.a8_token,
-               json.dumps({"filters":{"rules":[]}}),
-               showcurl=args.debug)
+    r = a8_delete('{0}/v1/rules'.format(args.a8_url),
+                  args.a8_token,
+                  showcurl=args.debug)
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
 
