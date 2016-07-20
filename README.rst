@@ -104,3 +104,8 @@ Documentation
 -------------
 
 Documentation is available at http://www.amalgam8.io/.
+
+Contributing
+------------
+Proposals and pull requests will be considered.
+Please see the https://github.com/amalgam8/amalgam8.github.io/blob/master/CONTRIBUTING.md file for more information.
