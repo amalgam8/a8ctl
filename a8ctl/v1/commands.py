@@ -285,7 +285,8 @@ def rules_list(args):
     response = r.json()
     result_list = []
     for value in response['rules']:
-        result_list.append({"source": value["source"],
+        result_list.append({"id": value["id"],
+                            "source": value["source"],
                             "destination": value["destination"],
                             "header": value["header"],
                             "header_pattern": value["pattern"],
@@ -296,7 +297,7 @@ def rules_list(args):
     if args.json:
         print json.dumps(result_list, indent=2)
     else:
-        x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code"])
+        x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code", "Rule Id"])
         x.align = "l"
         for entry in result_list:
             x.add_row([entry["source"],
@@ -306,7 +307,8 @@ def rules_list(args):
                        entry["delay_probability"],
                        entry["delay"],
                        entry["abort_probability"],
-                       entry["abort_code"]
+                       entry["abort_code"],
+                       entry["id"]
             ])
         print x
 
@@ -345,7 +347,7 @@ def set_rule(args):
                 args.a8_token,
                 json.dumps(payload),
                 showcurl=args.debug)
-    fail_unless(r, 200)
+    fail_unless(r, 201)
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
@@ -355,6 +357,13 @@ def clear_rules(args):
                   showcurl=args.debug)
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
+
+def delete_rule(args):
+    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_url, args.id),
+                  args.a8_token,
+                  showcurl=args.debug)
+    fail_unless(r, 200)
+    print 'Deleted fault injection rule with id: %s' % args.id
 
 def _print_assertion_results(results):
     x = PrettyTable(["AssertionName", "Source", "Destination", "Result", "ErrorMsg"])

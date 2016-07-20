@@ -153,20 +153,30 @@ def main():
                                   help='HTTP error code to return to caller. Specify -1 to close TCP connection',
                                   type=int)
 
-    # a8ctl gremlin recipe-run ...
+    # a8ctl rule-clear
     parser_clear_rules = \
-                        subparsers.add_parser('rule-clear',
-                                              description='Clear all fault injection rules from the application.',
-                                              help='Clear all fault injection rules from the application.'
-                        )
+        subparsers.add_parser('rule-clear',
+                              description='Clear all fault injection rules from the application.',
+                              help='Clear all fault injection rules from the application.'
+                              )
     parser_clear_rules.set_defaults(func=commands.clear_rules)
+
+    # a8ctl rule-delete <id>
+    parser_delete_rule = \
+        subparsers.add_parser('rule-delete',
+                              description='Delete a fault injection rule with the specified id.',
+                              help='Delete a fault injection rule with the specified id.'
+                              )
+    parser_delete_rule.set_defaults(func=commands.delete_rule)
+    parser_delete_rule.add_argument("id",
+                                    help='The rule id')
 
     # a8ctl gremlin recipe-run ...
     parser_run_recipe = \
-                        subparsers.add_parser('recipe-run',
-                                              description='Setup a failure scenario and assertion to test against the application.',
-                                              help='Setup a failure scenario and assertion to test against the application.'
-                        )
+        subparsers.add_parser('recipe-run',
+                              description='Setup a failure scenario and assertion to test against the application.',
+                              help='Setup a failure scenario and assertion to test against the application.'
+                              )
     parser_run_recipe.set_defaults(func=commands.run_recipe)
     parser_run_recipe.add_argument("--topology",
                                    help='The application\'s logical topology')
