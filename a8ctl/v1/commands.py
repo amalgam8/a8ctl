@@ -428,8 +428,13 @@ def run_recipe(args):
     print start_time
     print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
     if args.checks:
-        print ('When done, press Enter key to continue to validation phase')
-        a = sys.stdin.read(1)
+        if args.run_load_script:
+            import subprocess
+            print ">>>", args.run_load_script
+            subprocess.call([args.run_load_script])
+        else:
+            print ('When done, press Enter key to continue to validation phase')
+            a = sys.stdin.read(1)
         #sleep for 3sec to make sure all logs reach elasticsearch
         time.sleep(3)
         end_time=datetime.datetime.utcnow().isoformat()

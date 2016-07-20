@@ -184,6 +184,8 @@ def main():
                                    help='The failure scenarios')
     parser_run_recipe.add_argument("--checks",
                                    help='Validations on the behavior of the microservices during the failure')
+    parser_run_recipe.add_argument("--run-load-script",
+                                   help='Script to inject test load into the application')
     parser_run_recipe.add_argument("--header",
                                    help='Specify the request tracking header used by the application',
                                    default='X-Request-ID')
