@@ -25,8 +25,7 @@ import urllib
 import datetime, time
 import pprint
 from parse import compile
-from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
-
+from gremlin import *
 
 def passOrfail(result):
     if result:
@@ -437,8 +436,9 @@ def run_recipe(args):
             print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
             print ('When done, press Enter key to continue to validation phase')
             a = sys.stdin.read(1)
-            #sleep for 3sec to make sure all logs reach elasticsearch
-            time.sleep(3)
+
+        #sleep for 3sec to make sure all logs reach elasticsearch
+        time.sleep(3)
 
         end_time=datetime.datetime.utcnow().isoformat()
         #print end_time
