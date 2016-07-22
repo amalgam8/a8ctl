@@ -16,8 +16,8 @@ or
 
 .. code:: bash
 
-    pip install a8ctl # from pypi
-    pip install a8ctl==<version> # for specific version, e.g., pip install a8ctl==0.1.8
+    sudo pip install a8ctl # from pypi
+    sudo pip install a8ctl==<version> # for specific version, e.g., pip install a8ctl==0.1.8
 
 For usage information, run the following command:
 
