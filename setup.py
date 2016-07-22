@@ -23,7 +23,7 @@ setup(
     long_description=description,
     author='Amalgam8 Team',
     url='https://github.com/amalgam8/a8ctl',
-    packages=["a8ctl", "a8ctl.v1"],
+    packages=["a8ctl", "a8ctl.v1", "gremlin"],
     entry_points = {
         "console_scripts": ['a8ctl = a8ctl.v1.a8ctl:main']
     },
@@ -34,7 +34,10 @@ setup(
         "parse",
         "prettytable",
         "decorator",
-        "pygremlin>=0.1.6"
+        'networkx',
+        'elasticsearch',
+        'elasticsearch_dsl',
+        'isodate'
     ],
     license='Apache Software License V2'
 )
