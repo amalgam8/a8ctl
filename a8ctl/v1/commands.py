@@ -430,8 +430,10 @@ def run_recipe(args):
     if args.checks:
         if args.run_load_script:
             import subprocess
-            print ">>>", args.run_load_script
-            subprocess.call([args.run_load_script])
+            #print ">>>", args.run_load_script
+            retcode = subprocess.call([args.run_load_script])
+            if retcode: #load injection failed. Do not run assertions
+                sys.exit(retcode)
         else:
             print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
             print ('When done, press Enter key to continue to validation phase')
@@ -452,7 +454,10 @@ def run_recipe(args):
         ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern,
                                 start_time=start_time, end_time=end_time, index=["_all"], debug=args.debug)
         results = ac.check_assertions(checklist, continue_on_error=True)
-        _print_assertion_results(results)
+        if args.json:
+            print json.dumps(results, indent=2)
+        else:
+            _print_assertion_results(results)
         clear_rules(args)
 
 def traffic_start(args):

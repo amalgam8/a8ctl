@@ -192,6 +192,9 @@ def main():
     parser_run_recipe.add_argument("--pattern",
                                    help='Select only requests whose request tracking header matches the pattern',
                                    default='*')
+    parser_run_recipe.add_argument("--json",
+                                   help='Output results in JSON format', 
+                                   action='store_true')
 
     # a8ctl traffic-start <service> <version> [--amount <percent>]
     parser_traffic_start = \
