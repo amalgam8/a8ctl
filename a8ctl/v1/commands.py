@@ -25,7 +25,7 @@ import urllib
 import datetime, time
 import pprint
 from parse import compile
-from pygremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
+from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
 
 
 def passOrfail(result):
@@ -424,33 +424,37 @@ def run_recipe(args):
     fg = A8FailureGenerator(topology, a8_url='{0}/v1/rules'.format(args.a8_url), a8_token=args.a8_token, 
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
+
     start_time = datetime.datetime.utcnow().isoformat()
-    print start_time
-    print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
+    #print start_time
+
     if args.checks:
         if args.run_load_script:
             import subprocess
             print ">>>", args.run_load_script
             subprocess.call([args.run_load_script])
         else:
+            print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
             print ('When done, press Enter key to continue to validation phase')
             a = sys.stdin.read(1)
-        #sleep for 3sec to make sure all logs reach elasticsearch
-        time.sleep(3)
+            #sleep for 3sec to make sure all logs reach elasticsearch
+            time.sleep(3)
+
         end_time=datetime.datetime.utcnow().isoformat()
-        print end_time
+        #print end_time
+
         #sleep for some more time to make sure all logs have been flushed
         time.sleep(5)
+
         log_server = checklist.get('log_server', args.a8_log_server)
-        ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern, start_time=start_time, end_time=end_time, debug=args.debug)
+
+        # TODO: Obtain the logstash index as user input or use logstash-YYYY.MM.DD with current date and time.
+        ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern,
+                                start_time=start_time, end_time=end_time, index=["_all"], debug=args.debug)
         results = ac.check_assertions(checklist, continue_on_error=True)
+
         _print_assertion_results(results)
         clear_rules(args)
-        # for check in results:
-        #     print 'Check %s %s %s' % (check.name, check.info, passOrfail(check.success))
-        # if not check.success:
-        #     exit_status = 1
-        # sys.exit(exit_status)
 
 def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
