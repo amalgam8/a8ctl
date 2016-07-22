@@ -25,7 +25,7 @@ import urllib
 import datetime, time
 import pprint
 from parse import compile
-from gremlin import *
+from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
 
 def passOrfail(result):
     if result:
@@ -452,7 +452,6 @@ def run_recipe(args):
         ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern,
                                 start_time=start_time, end_time=end_time, index=["_all"], debug=args.debug)
         results = ac.check_assertions(checklist, continue_on_error=True)
-
         _print_assertion_results(results)
         clear_rules(args)
 
