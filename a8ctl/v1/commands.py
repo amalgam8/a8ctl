@@ -149,11 +149,11 @@ def fail_unless(response, code_or_codes):
         print response.text
         sys.exit(3)
 
-def get_registry_credentials(tenant_info, args):
-    registry = tenant_info["credentials"]["registry"]
-    registry_url = registry["url"] if args.a8_registry_url is None else args.a8_registry_url
-    registry_token = registry["token"] if args.a8_registry_token is None else args.a8_registry_token
-    return registry_url, "Bearer " + registry_token
+# def get_registry_credentials(tenant_info, args):
+#     registry = tenant_info["credentials"]["registry"]
+#     registry_url = registry["url"] if args.a8_registry_url is None else args.a8_registry_url
+#     registry_token = registry["token"] if args.a8_registry_token is None else args.a8_registry_token
+#     return registry_url, "Bearer " + registry_token
 
 def is_active(service, default_version, registry_url, registry_token, debug=False):
     r = a8_get('{0}/api/v1/services/{1}'.format(registry_url, service), registry_token, showcurl=debug)
@@ -173,12 +173,13 @@ SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in 
 ############################################
 
 def service_list(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-               args.a8_controller_token,
-               showcurl=args.debug)
-    fail_unless(r, 200)
-    tenant_info = r.json()
-    registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+    #            args.a8_controller_token,
+    #            showcurl=args.debug)
+    # fail_unless(r, 200)
+    # tenant_info = r.json()
+    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
@@ -207,12 +208,13 @@ def service_list(args):
         print x
 
 def service_routing(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-               args.a8_controller_token,
-               showcurl=args.debug)
-    fail_unless(r, 200)
-    tenant_info = r.json()
-    registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+    #            args.a8_controller_token,
+    #            showcurl=args.debug)
+    # fail_unless(r, 200)
+    # tenant_info = r.json()
+    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
@@ -481,12 +483,13 @@ def traffic_start(args):
     default_version = service_info.get('default')
     if not default_version:
         default_version = NO_VERSION
-    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-               args.a8_controller_token,
-               showcurl=args.debug)
-    fail_unless(r, 200)
-    tenant_info = r.json()
-    registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+    #            args.a8_controller_token,
+    #            showcurl=args.debug)
+    # fail_unless(r, 200)
+    # tenant_info = r.json()
+    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     if not is_active(args.service, default_version, registry_url, registry_token, args.debug):
         print "Invalid state for start operation: service \"%s\" is not currently receiving traffic" % args.service
         sys.exit(6)
