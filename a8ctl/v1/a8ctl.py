@@ -41,10 +41,10 @@ def main():
                         default=os.getenv('A8_DEBUG')=='1'
                         )
 
-    parser.add_argument('--a8-url',
+    parser.add_argument('--a8-controller-url',
                         help='override $A8_CONTROLLER_URL with url of Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_URL', 'http://localhost:31200'))
-    parser.add_argument('--a8-token',
+    parser.add_argument('--a8-controller-token',
                         help='override $A8_CONTROLLER_TOKEN with token for Amalgam8 Controller',
                         default=os.getenv('A8_CONTROLLER_TOKEN', 'local'))
 

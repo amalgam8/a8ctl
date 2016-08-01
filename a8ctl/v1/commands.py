@@ -173,8 +173,8 @@ SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in 
 ############################################
 
 def service_list(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
-               args.a8_token,
+    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
@@ -207,8 +207,8 @@ def service_list(args):
         print x
 
 def service_routing(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
-               args.a8_token,
+    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
@@ -265,23 +265,23 @@ def set_routing(args):
             selector_list.append(selector.replace("(","={").replace(")","}"))
         routing_request['selectors'] = "{" + ",".join(selector_list) + "}"
 
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                json.dumps(routing_request),
                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Set routing rules for microservice', args.service
 
 def delete_routing(args):
-    r = a8_delete('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_delete('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Deleted routing rules for microservice', args.service
 
 def rules_list(args):
-    r = a8_get('{0}/v1/rules'.format(args.a8_url),
-               args.a8_token,
+    r = a8_get('{0}/v1/rules'.format(args.a8_controller_url),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     response = r.json()
@@ -345,8 +345,8 @@ def set_rule(args):
 
     payload = {"rules": [rule_request]}
 
-    r = a8_post('{}/v1/rules'.format(args.a8_url),
-                args.a8_token,
+    r = a8_post('{}/v1/rules'.format(args.a8_controller_url),
+                args.a8_controller_token,
                 json.dumps(payload),
                 showcurl=args.debug)
     fail_unless(r, 201)
@@ -354,15 +354,15 @@ def set_rule(args):
 
 def clear_rules(args):
 
-    r = a8_delete('{0}/v1/rules'.format(args.a8_url),
-                  args.a8_token,
+    r = a8_delete('{0}/v1/rules'.format(args.a8_controller_url),
+                  args.a8_controller_token,
                   showcurl=args.debug)
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
 
 def delete_rule(args):
-    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_url, args.id),
-                  args.a8_token,
+    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
+                  args.a8_controller_token,
                   showcurl=args.debug)
     fail_unless(r, 200)
     print 'Deleted fault injection rule with id: %s' % args.id
@@ -423,7 +423,7 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_url='{0}/v1/rules'.format(args.a8_url), a8_token=args.a8_token, 
+    fg = A8FailureGenerator(topology, a8_controller_url='{0}/v1/rules'.format(args.a8_controller_url), a8_controller_token=args.a8_controller_token, 
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
 
@@ -467,8 +467,8 @@ def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
          print "--amount must be between 0 and 100"
          sys.exit(4)
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, [200, 404])
     if r.status_code == 200:
@@ -481,8 +481,8 @@ def traffic_start(args):
     default_version = service_info.get('default')
     if not default_version:
         default_version = NO_VERSION
-    r = a8_get('{0}/v1/tenants'.format(args.a8_url),
-               args.a8_token,
+    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     tenant_info = r.json()
@@ -497,8 +497,8 @@ def traffic_start(args):
         service_info['default'] = args.version
     else:
         service_info['selectors'] = "{%s={weight=%s}}" % (args.version, float(args.amount)/100)
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                json.dumps(service_info),
                showcurl=args.debug)
     fail_unless(r, 200)
@@ -508,8 +508,8 @@ def traffic_start(args):
         print 'Transfer starting for {}: diverting {}% of traffic from {} to {}'.format(args.service, args.amount, default_version, args.version)
 
 def traffic_step(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
@@ -542,8 +542,8 @@ def traffic_step(args):
         new_amount = 100
         service_info['default'] = traffic_version
         service_info['selectors'] = None
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                json.dumps(service_info),
                showcurl=args.debug)
     fail_unless(r, 200)
@@ -553,8 +553,8 @@ def traffic_step(args):
         print 'Transfer step for {}: diverting {}% of traffic from {} to {}'.format(args.service, new_amount, default_version, traffic_version)
 
 def traffic_abort(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
@@ -565,8 +565,8 @@ def traffic_abort(args):
     if not default_version:
         default_version = NO_VERSION
     service_info['selectors'] = None
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_url, args.service),
-               args.a8_token,
+    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+               args.a8_controller_token,
                json.dumps(service_info),
                showcurl=args.debug)
     fail_unless(r, 200)
