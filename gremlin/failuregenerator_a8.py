@@ -43,7 +43,7 @@ def _duration_to_floatsec(s):
 
 class A8FailureGenerator(object):
 
-    def __init__(self, app, header=None, pattern=None, a8_url = None, a8_token=None, a8_tenant_id = None, debug=False):
+    def __init__(self, app, header=None, pattern=None, a8_controller_url = None, a8_controller_token=None, debug=False):
         """
         Create a new failure generator
         @param app ApplicationGraph: instance of ApplicationGraph object
@@ -54,10 +54,9 @@ class A8FailureGenerator(object):
         self._queue = []
         self.header = header
         self.pattern = pattern
-        self.a8_url = a8_url
-        self.a8_token = a8_token
-        self.a8_tenant_id = a8_tenant_id
-        assert a8_url is not None and a8_token is not None
+        self.a8_controller_url = a8_controller_url
+        self.a8_controller_token = a8_controller_token
+        assert a8_controller_url is not None and a8_controller_token is not None
         # The failure generator SDK supports only one failure recipe at a given time. A recipe can consist of multiple tests.
         # The trackingheader and pattern fields in the recipes will be ignored. But multiple failure generators
         # can be run from different processes. So, the user has to supply the header name and pattern being used.
@@ -155,13 +154,13 @@ class A8FailureGenerator(object):
             print 'Clearing rules'
         try:
             headers = {"Content-Type" : "application/json"}
-            if self.a8_token != "" :
-                headers['Authorization'] = "Bearer " + self.a8_token
-            resp = requests.delete(self.a8_url,
+            if self.a8_controller_token != "" :
+                headers['Authorization'] = "Bearer " + self.a8_controller_token
+            resp = requests.delete(self.a8_controller_url,
                                    headers = headers)
             resp.raise_for_status()
         except requests.exceptions.ConnectionError, e:
-            print "FAILURE: Could not communicate with control plane %s" % self.a8_url
+            print "FAILURE: Could not communicate with control plane %s" % self.a8_controller_url
             print e
             sys.exit(3)
 
@@ -170,15 +169,15 @@ class A8FailureGenerator(object):
     def push_rules(self):
         try:
             headers = {"Content-Type" : "application/json"}
-            if self.a8_token != "" :
-                headers['Authorization'] = "Bearer " + self.a8_token
+            if self.a8_controller_token != "" :
+                headers['Authorization'] = "Bearer " + self.a8_controller_token
             payload = {"rules": self._queue}
-            resp = requests.post(self.a8_url,
+            resp = requests.post(self.a8_controller_url,
                                  headers = headers,
                                  data=json.dumps(payload))
             resp.raise_for_status()
         except requests.exceptions.ConnectionError, e:
-            print "FAILURE: Could not communicate with control plane %s" % self.a8_url
+            print "FAILURE: Could not communicate with control plane %s" % self.a8_controller_url
             print e
             sys.exit(3)
 
