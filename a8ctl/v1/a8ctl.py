@@ -46,7 +46,7 @@ def main():
                         default=os.getenv('A8_CONTROLLER_URL', 'http://localhost:31200'))
     parser.add_argument('--a8-token',
                         help='override $A8_CONTROLLER_TOKEN with token for Amalgam8 Controller',
-                        default=os.getenv('A8_CONTROLLER_TOKEN', 'Bearer local'))
+                        default=os.getenv('A8_CONTROLLER_TOKEN', 'local'))
 
     parser.add_argument('--a8-registry-url',
                         help='override $A8_REGISTRY_URL with url of Amalgam8 Registry',

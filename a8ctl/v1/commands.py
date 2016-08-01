@@ -34,7 +34,8 @@ def passOrfail(result):
         return "FAIL"
 
 def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}):
-    headers['Authorization'] = token
+    if token != "" :
+        headers['Authorization'] = "Bearer " + token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
 
@@ -60,7 +61,8 @@ def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-ty
     """
     @type body: str
     """
-    headers['Authorization'] = token
+    if token != "" :
+        headers['Authorization'] = "Bearer " + token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
 
@@ -88,7 +90,8 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
     @type body: str
     """
 
-    headers['Authorization'] = token
+    if token != "" :
+        headers['Authorization'] = "Bearer " + token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
 
@@ -113,8 +116,8 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
 
 
 def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}):
-    headers['Authorization'] = token
-
+    if token != "" :
+        headers['Authorization'] = "Bearer " + token
     if extra_headers:
         headers=dict(headers.items() + extra_headers.items())
 

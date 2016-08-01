@@ -154,9 +154,11 @@ class A8FailureGenerator(object):
         if self.debug:
             print 'Clearing rules'
         try:
+            headers = {"Content-Type" : "application/json"}
+            if self.a8_token != "" :
+                headers['Authorization'] = "Bearer " + self.a8_token
             resp = requests.delete(self.a8_url,
-                                   headers = {"Content-Type" : "application/json",
-                                              "Authorization" : self.a8_token})
+                                   headers = headers)
             resp.raise_for_status()
         except requests.exceptions.ConnectionError, e:
             print "FAILURE: Could not communicate with control plane %s" % self.a8_url
@@ -167,10 +169,12 @@ class A8FailureGenerator(object):
     #TODO: Create a plugin model here, to support gremlinproxy and nginx
     def push_rules(self):
         try:
+            headers = {"Content-Type" : "application/json"}
+            if self.a8_token != "" :
+                headers['Authorization'] = "Bearer " + self.a8_token
             payload = {"rules": self._queue}
             resp = requests.post(self.a8_url,
-                                 headers = {"Content-Type" : "application/json",
-                                            "Authorization" : self.a8_token},
+                                 headers = headers,
                                  data=json.dumps(payload))
             resp.raise_for_status()
         except requests.exceptions.ConnectionError, e:
