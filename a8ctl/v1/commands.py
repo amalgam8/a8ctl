@@ -208,11 +208,11 @@ def service_list(args):
         print x
 
 def service_routing(args):
-    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-    #            args.a8_controller_token,
-    #            showcurl=args.debug)
-    # fail_unless(r, 200)
-    # tenant_info = r.json()
+    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+                args.a8_controller_token,
+                showcurl=args.debug)
+    fail_unless(r, 200)
+    tenant_info = r.json()
     # registry_url, registry_token = get_registry_credentials(tenant_info, args)
     registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
@@ -425,7 +425,7 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_controller_url='{0}/v1/rules'.format(args.a8_controller_url), a8_controller_token=args.a8_controller_token, 
+    fg = A8FailureGenerator(topology, a8_controller_url='{0}/v1/rules'.format(args.a8_controller_url), a8_controller_token=args.a8_controller_token,
                             header=header, pattern='.*?'+pattern, debug=args.debug)
     fg.setup_failures(scenarios)
 
