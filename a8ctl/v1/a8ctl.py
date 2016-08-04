@@ -46,14 +46,14 @@ def main():
                         default=os.getenv('A8_CONTROLLER_URL', 'http://localhost:31200'))
     parser.add_argument('--a8-controller-token',
                         help='override $A8_CONTROLLER_TOKEN with token for Amalgam8 Controller',
-                        default=os.getenv('A8_CONTROLLER_TOKEN', 'local'))
+                        default=os.getenv('A8_CONTROLLER_TOKEN', ''))
 
     parser.add_argument('--a8-registry-url',
                         help='override $A8_REGISTRY_URL with url of Amalgam8 Registry',
                         default=os.getenv('A8_REGISTRY_URL', 'http://localhost:31300'))
     parser.add_argument('--a8-registry-token',
                         help='override $A8_REGISTRY_TOKEN with token of Amalgam8 Registry',
-                        default=os.getenv('A8_REGISTRY_TOKEN', 'local'))
+                        default=os.getenv('A8_REGISTRY_TOKEN', ''))
 
     parser.add_argument('--a8-log-server',
                         help='override $A8_LOG_SERVER with log server for Amalgam8 log messages',
