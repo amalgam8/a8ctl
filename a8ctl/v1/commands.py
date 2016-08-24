@@ -26,6 +26,7 @@ import datetime, time
 import pprint
 from parse import compile
 from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
+from boto.gs.cors import HEADER
 
 def passOrfail(result):
     if result:
@@ -114,7 +115,6 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
 
     return r
 
-
 def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}):
     if token != "" :
         headers['Authorization'] = "Bearer " + token
@@ -149,36 +149,161 @@ def fail_unless(response, code_or_codes):
         print response.text
         sys.exit(3)
 
-# def get_registry_credentials(tenant_info, args):
-#     registry = tenant_info["credentials"]["registry"]
-#     registry_url = registry["url"] if args.a8_registry_url is None else args.a8_registry_url
-#     registry_token = registry["token"] if args.a8_registry_token is None else args.a8_registry_token
-#     return registry_url, "Bearer " + registry_token
-
 def is_active(service, default_version, registry_url, registry_token, debug=False):
+    return True #FB TEMP
     r = a8_get('{0}/api/v1/services/{1}'.format(registry_url, service), registry_token, showcurl=debug)
     if r.status_code == 200:
         instance_list = r.json()["instances"]
         for instance in instance_list:
-            version = instance["metadata"]["version"] if "metadata" in instance and "version" in instance["metadata"] else NO_VERSION
+            version = version = tags_to_version(instance.get("tags"))
             if version == default_version:
                 return True
     return False
 
-NO_VERSION = "UNVERSIONED"
-SELECTOR_PARSER = compile("{version}=#{rule}#") # TODO: tolerate white-space in format
+def base_route_rule(destination, version, priority):
+    rule = {
+        "destination": destination,
+        "priority": priority,
+        "route": {
+            "backends": [
+                { "tags": [ version ] }
+            ]
+        }
+    }
+    return rule
+
+def weight_rule(destination, default_version, weighted_vesions=[], priority=1):
+    rule = base_route_rule(destination, default_version, priority)
+    for version, weight in weighted_vesions:
+        rule["route"]["backends"].insert(0, { "tags": [ version ], "weight": weight })
+    return rule
+
+def header_rule(destination, version, header, pattern, priority):
+    rule = base_route_rule(destination, version, priority)
+    rule["match"] = {
+      "headers": {
+        header: pattern
+      }
+    }
+    return rule
+
+def fault_rule(source, destination_name, destination_version, header, pattern, priority, delay=None, delay_probability=None, abort=None, abort_probability=None):
+    rule = {
+        "destination": destination_name,
+        "priority": priority,
+        "match": {
+            "headers": {
+                header: pattern
+            }
+        },
+        "actions" : []
+    }
+    source_name, source_version = split_service(source)
+    source = { "name": source_name }
+    if source_version:
+        source["tags"] = [ source_version ]
+    rule["match"]["source"] = source
+    if delay_probability:
+        action = {
+            "action" : "delay",
+            "probability" : delay_probability,
+            "duration": delay
+        }
+        if destination_version:
+            action["tags"] = [ destination_version ]
+        rule["actions"].append(action)
+    if abort_probability:
+        action = {
+            "action" : "abort",
+            "probability" : abort_probability,
+            "return_code": abort
+        }
+        if destination_version:
+            action["tags"] = [ destination_version ]
+        rule["actions"].append(action)
+    return rule
+
+def split_service(input):
+    colon = input.rfind(':')
+    if colon != -1:
+        service = input[:colon]
+        version = input[colon+1:]
+    else:
+        service = input
+        version = None
+    return service, version
+
+def tags_to_version(tags):
+    #TODO: what about order of tags? need to be sorted?
+    return ",".join(tags) if tags else NO_VERSION
+
+def version_to_tags(version):
+    return version.split(",")
+
+def versioned_service_name(name, tags):
+    service = name
+    if tags:
+       service += ":" + tags_to_version(tags)
+    return service
+
+def get_match_selector(version, match):
+    selector = version + "("
+    if "source" in match:
+        selector += "source=" + versioned_service_name(match["source"]["name"], match["source"].get("tags"))
+    if "headers" in match:
+        for header, value in match["headers"].items():
+            if selector[-1:] != "(":
+                selector += ","
+            if header == "Cookie" and value.startswith(".*?user="):
+                selector += 'user="%s"' % value[len(".*?user="):]
+            else:
+                selector += 'header="%s:%s"' % (header, value)
+    selector += ")"
+    return selector 
+
+def add_rule(sorted_rules, rule):
+    for i in range(0, len(sorted_rules)):
+        if sorted_rules[i]["priority"] < rule["priority"]:
+            sorted_rules.insert(i, rule)
+            return
+    sorted_rules.append(rule)
+    
+def sort_rules(rule_list):
+    sorted_rules = []
+    for rule in rule_list:
+        add_rule(sorted_rules, rule)
+    return sorted_rules
+            
+def get_routes(routing_rules):
+    default = None
+    selectors = []
+    routing_rules = sort_rules(routing_rules)
+    for rule in routing_rules:
+        route = rule["route"]
+        match = rule.get("match")
+        if match:
+            if len(route["backends"]) == 1 and "weight" not in route["backends"][0]:
+                version = tags_to_version(route["backends"][0]["tags"])
+                selectors.append(get_match_selector(version, match))
+            else:
+                continue #TODO: future support for weighted match selectors?
+        else:
+            for backend in route["backends"]:
+                version = tags_to_version(backend["tags"])
+                if "weight" in backend:
+                    selectors.append("%s(weight=%s)" % (version, backend["weight"]))
+                else:
+                    default = version
+    return default, selectors
+
+NO_VERSION = "-untagged-"
+SELECTOR_PARSER = compile("{version}({rule})")
 
 ############################################
 # CLI Commands
 ############################################
 
 def service_list(args):
-    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-    #            args.a8_controller_token,
-    #            showcurl=args.debug)
-    # fail_unless(r, 200)
-    # tenant_info = r.json()
-    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
     registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
@@ -190,7 +315,7 @@ def service_list(args):
         instance_list = r.json()["instances"]
         version_counts = {}
         for instance in instance_list:
-            version = instance["metadata"]["version"] if "metadata" in instance and "version" in instance["metadata"] else NO_VERSION
+            version = tags_to_version(instance.get("tags"))
             version_counts[version] = version_counts.get(version, 0) + 1
         result_instances = []
         for version, count in version_counts.iteritems():
@@ -208,37 +333,27 @@ def service_list(args):
         print x
 
 def service_routing(args):
-    r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
+    r = a8_get('{0}/v1/rules/routes'.format(args.a8_controller_url),
                 args.a8_controller_token,
                 showcurl=args.debug)
     fail_unless(r, 200)
-    tenant_info = r.json()
-    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    service_rules = r.json()["rules"]
     registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
     service_list = r.json()["services"]
+    #service_rules = { "reviews": test_routing_rules, "ratings": test_routing_rules2 } #FB TEMP
+    #service_list = [ "foo" ] #FB TEMP
+
     result_list = []
-    for value in tenant_info['filters']['versions']:
-        service = get_field(value, 'service')
-        if service in service_list:
-            service_list.remove(service)
-        default = value.get('default')
-        if not default:
-            default = NO_VERSION
-        selectors = value.get('selectors')
-        versions = []
+    for service, routing_rules in service_rules.iteritems():
+        default, selectors = get_routes(routing_rules)
         if selectors:
-            selectors = selectors[selectors.find("{")+1:][:selectors.rfind("}")-1]
-            selector_list = selectors.split(",")
-            for selector in selector_list:
-                r = SELECTOR_PARSER.parse(selector.replace("{","#").replace("}","#"))
-                versions.append("%s(%s)" % (r['version'], r['rule']))
-            result_list.append({"service": service, "default": default, "selectors": versions})
+            result_list.append({"service": service, "default": default, "selectors": selectors})
         else:
             result_list.append({"service": service, "default": default})
     for service in service_list:
-        result_list.append({"service": service, "default": NO_VERSION})
+        result_list.append({"service": service})
     if args.json:
         print json.dumps(result_list, indent=2)
     else:
@@ -246,28 +361,50 @@ def service_routing(args):
         x.align = "l"
         for entry in result_list:
             x.add_row([entry["service"],
-                       entry["default"],
+                       entry["default"] if "default" in entry else "",
                        ", ".join(entry["selectors"]) if "selectors" in entry else ""
                        ])
         print x
 
 def set_routing(args):
-    if not args.default and not args.selector:
-         print "You must specify --default or at least one --selector argument"
+    if not args.default:
+         print "You must specify --default"
          sys.exit(4)
 
-    routing_request = {}
-
-    if args.default:
-        routing_request['default'] = args.default
-
+    weight_list = []
+    header_list = []
     if args.selector:
-        selector_list = []
         for selector in args.selector:
-            selector_list.append(selector.replace("(","={").replace(")","}"))
-        routing_request['selectors'] = "{" + ",".join(selector_list) + "}"
+            r = SELECTOR_PARSER.parse(selector)
+            if not r:
+                print "Invalid --selector value: %s" % selector
+                sys.exit(5)
+            version = r['version'].strip()
+            rule = r['rule'].strip()
+            key, sep, value = rule.partition('=')
+            kind = key.strip()
+            if kind == 'weight':
+                weight = float(value.strip())
+                weight_list.insert(0, (version, weight))
+            elif kind == 'user':
+                user = value.strip()
+                header_list.insert(0, (version, "Cookie", ".*?user=" + user))
+            elif kind == 'header':
+                header, sep, pattern = value.strip().partition(':')
+                header_list.insert(0, (version, header, pattern))
+            else:
+                print "Unrecognized --selector key (%s) in selector: %s" % (kind, selector)
+                sys.exit(6)
 
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+    priority = 1    
+    routing_request = { "rules": [ weight_rule(args.service, args.default, weight_list, priority) ] }
+    
+    for version, header, pattern in header_list:
+        priority += 1
+        routing_request["rules"].insert(0, header_rule(args.service, version, header, pattern, priority))
+    
+    #print json.dumps(routing_request, indent=2)
+    r = a8_put('{0}/v1/rules/{1}/routes'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                json.dumps(routing_request),
                showcurl=args.debug)
@@ -275,78 +412,110 @@ def set_routing(args):
     print 'Set routing rules for microservice', args.service
 
 def delete_routing(args):
-    r = a8_delete('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+    r = a8_delete('{0}/v1/rules/{1}/routes'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Deleted routing rules for microservice', args.service
 
 def rules_list(args):
-    r = a8_get('{0}/v1/rules'.format(args.a8_controller_url),
+    r = a8_get('{0}/v1/rules/actions'.format(args.a8_controller_url),
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
-    response = r.json()
+    service_rules = r.json()
+    #service_rules = { "ratings": test_fault_rules } #FB TEMP
+
     result_list = []
-    for value in response['rules']:
-        result_list.append({"id": value["id"],
-                            "source": value["source"],
-                            "destination": value["destination"],
-                            "header": value["header"],
-                            "header_pattern": value["pattern"],
-                            "delay_probability": value["delay_probability"],
-                            "delay": value["delay"],
-                            "abort_probability": value["abort_probability"],
-                            "abort_code": value["return_code"]})
+    for action_rules in service_rules.itervalues():
+        for rule in sort_rules(action_rules):
+            action_entry = {
+                "id": rule["id"],
+                "priority": rule["priority"]
+            }
+            if "match" in rule:
+                match = rule["match"]
+                if "source" in match:
+                    action_entry["source"] = versioned_service_name(match["source"]["name"], match["source"].get("tags"))
+                if "headers" in match:
+                    for header, pattern in match["headers"].iteritems():
+                        action_entry["header"] = header
+                        action_entry["header_pattern"] = pattern
+                        break # TODO: support more than one header?
+            tagged_destinations = set()
+            delay_set = False
+            abort_set = False
+            for action in rule["actions"]:
+                if action["action"] == "delay":
+                    if delay_set: continue # Ignore all but the first one. TODO: handle this case better?
+                    action_entry["delay"] = action["duration"]
+                    action_entry["delay_probability"] = action["probability"]
+                    tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
+                    delay_set = True
+                elif action["action"] == "abort":
+                    if abort_set: continue # Ignore all but the first one. TODO: handle this case better?
+                    action_entry["abort_code"] = action["return_code"]
+                    action_entry["abort_probability"] = action["probability"]
+                    tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
+                    abort_set = True
+            action_entry["destination"] = ",".join(tagged_destinations) #TODO: improve handling of multiple tags
+            result_list.append(action_entry)
     if args.json:
         print json.dumps(result_list, indent=2)
     else:
         x = PrettyTable(["Source", "Destination", "Header", "Header Pattern", "Delay Probability", "Delay", "Abort Probability", "Abort Code", "Rule Id"])
         x.align = "l"
         for entry in result_list:
-            x.add_row([entry["source"],
+            x.add_row([entry.get("source", ""),
                        entry["destination"],
-                       entry["header"],
-                       entry["header_pattern"],
-                       entry["delay_probability"],
-                       entry["delay"],
-                       entry["abort_probability"],
-                       entry["abort_code"],
+                       entry.get("header", ""),
+                       entry.get("header_pattern", ""),
+                       entry.get("delay_probability", ""),
+                       entry.get("delay", ""),
+                       entry.get("abort_probability", ""),
+                       entry.get("abort_code", ""),
                        entry["id"]
             ])
         print x
 
 def set_rule(args):
     if not args.source or not args.destination or not args.header:
-         print "You must specify --source, --destination, and --header"
-         sys.exit(4)
-
-    rule_request = {
-        "source": args.source,
-        "destination": args.destination,
-        "header" : args.header
-    }
-
-    if args.pattern:
-        rule_request['pattern'] = '.*?'+args.pattern
-    else:
-        rule_request['pattern'] = '.*'
-
-    if args.delay:
-        rule_request['delay'] = args.delay
-    if args.delay_probability:
-        rule_request['delay_probability'] = args.delay_probability
-    if args.abort_probability:
-        rule_request['abort_probability'] = args.abort_probability
-    if args.abort_code:
-        rule_request['return_code'] = args.abort_code
+        print "You must specify --source, --destination, and --header"
+        sys.exit(4)
 
     if not (args.delay > 0 and args.delay_probability > 0.0) and not (args.abort_code and args.abort_probability > 0.0):
         print "You must specify either a valid delay with non-zero delay_probability or a valid abort-code with non-zero abort-probability"
-        sys.exit(4)
+        sys.exit(5)
 
-    payload = {"rules": [rule_request]}
+    destination_name, destination_version = split_service(args.destination)
 
+    r = a8_get('{}/v1/rules/actions/{}'.format(args.a8_controller_url, destination_name),
+                args.a8_controller_token,
+                json.dumps(payload),
+                showcurl=args.debug)
+    fail_unless(r, [200, 404])
+    if r.status_code == 200:
+        print "Rule already set for destination service {}".format(args.destination)
+        sys.exit(6)
+    
+    pattern = '.*?'+args.pattern if args.pattern else '.*'
+    delay_probability = args.delay_probability if args.delay_probability > 0 else None
+    abort_probability = args.abort_probability if args.abort_probability > 0 else None
+    priority = 10 # ???
+
+    rule = fault_rule(args.source,
+                      destination_name,
+                      destination_version,
+                      args.header, pattern,
+                      priority,
+                      delay=args.delay,
+                      delay_probability=delay_probability,
+                      abort=args.abort_code,
+                      abort_probability=abort_probability)
+    
+    payload = { "rules": [ rule ] }
+    
+    #print json.dumps(payload, indent=2)
     r = a8_post('{}/v1/rules'.format(args.a8_controller_url),
                 args.a8_controller_token,
                 json.dumps(payload),
@@ -355,7 +524,7 @@ def set_rule(args):
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
-
+    #TODO: How to delete actionsl only? This one deletes actions and routes.
     r = a8_delete('{0}/v1/rules'.format(args.a8_controller_url),
                   args.a8_controller_token,
                   showcurl=args.debug)
@@ -469,26 +638,23 @@ def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
          print "--amount must be between 0 and 100"
          sys.exit(4)
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+    r = a8_get('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                showcurl=args.debug)
-    fail_unless(r, [200, 404])
-    if r.status_code == 200:
-        service_info = r.json()
-        if service_info['selectors']:
-            print "Invalid state for start operation: service \"%s\" traffic is already being split" % args.service
-            sys.exit(5)
-    else:
-        service_info = {}
-    default_version = service_info.get('default')
-    if not default_version:
-        default_version = NO_VERSION
-    # r = a8_get('{0}/v1/tenants'.format(args.a8_controller_url),
-    #            args.a8_controller_token,
-    #            showcurl=args.debug)
-    # fail_unless(r, 200)
-    # tenant_info = r.json()
-    # registry_url, registry_token = get_registry_credentials(tenant_info, args)
+    fail_unless(r, 200)
+    service_info = r.json()
+    #service_info = {"rules": test_routing_rules2} #FB TEMP
+
+    routing_rules = sort_rules(service_info["rules"])
+    weight_rule = routing_rules[-1]
+    
+    backends = weight_rule["route"]["backends"]
+    if len(backends) != 1 or "weight" in backends[0]:
+        print "Invalid state for start operation: service \"%s\" traffic is already being split" % args.service
+        sys.exit(5)
+
+    default_version = tags_to_version(backends[0]["tags"])
+
     registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     if not is_active(args.service, default_version, registry_url, registry_token, args.debug):
         print "Invalid state for start operation: service \"%s\" is not currently receiving traffic" % args.service
@@ -496,13 +662,16 @@ def traffic_start(args):
     if not is_active(args.service, args.version, registry_url, registry_token, args.debug):
         print "Invalid state for start operation: service \"%s\" does not have active instances of version \"%s\"" % (args.service, args.version)
         sys.exit(7)
+
     if args.amount == 100:
-        service_info['default'] = args.version
+        backends[0]["tags"] = version_to_tags(args.version)
     else:
-        service_info['selectors'] = "{%s={weight=%s}}" % (args.version, float(args.amount)/100)
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+        backends.insert(0, {"tags": version_to_tags(args.version), "weight": args.amount})
+    
+    print json.dumps(weight_rule, indent=2)
+    r = a8_put('{0}/v1/rules'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
-               json.dumps(service_info),
+               json.dumps({"rules": [ weight_rule ]}),
                showcurl=args.debug)
     fail_unless(r, 200)
     if args.amount == 100:
@@ -511,43 +680,43 @@ def traffic_start(args):
         print 'Transfer starting for {}: diverting {}% of traffic from {} to {}'.format(args.service, args.amount, default_version, args.version)
 
 def traffic_step(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+    r = a8_get('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
-    default_version = service_info.get('default')
-    if not default_version:
-        default_version = NO_VERSION
-    selectors = service_info.get('selectors')
-    selectors = selectors[selectors.find("{")+1:][:selectors.rfind("}")-1]
-    selector_list = selectors.split(",")
-    if len(selector_list) != 1 or not selector_list[0]:
-         print "Invalid state for step operation"
-         sys.exit(5)
-    r = SELECTOR_PARSER.parse(selector_list[0].replace("{","#").replace("}","#"))
-    traffic_version = r['version']
-    rule = r['rule'].split("=")
-    if rule[0].strip() != "weight":
-         print "Invalid state for step operation"
-         sys.exit(6)
-    current_weight = rule[1]
+    #service_info = {"rules": test_routing_rules2} #FB TEMP
+
+    routing_rules = sort_rules(service_info["rules"])
+    weight_rule = routing_rules[-1]
+    
+    backends = weight_rule["route"]["backends"]
+    if len(backends) != 2 or "weight" not in backends[0] or "weight" in backends[1]:
+        print "Invalid state for step operation"
+        sys.exit(5)
+
+    traffic_version = tags_to_version(backends[0]["tags"])
+    default_version = tags_to_version(backends[1]["tags"])
+
+    current_weight = backends[0]["weight"]
     if not args.amount:
-        new_amount = int(float(current_weight) * 100) + 10
+        new_amount = int(current_weight * 100) + 10
     else:
         if args.amount < 0 or args.amount > 100:
             print "--amount must be between 0 and 100"
             sys.exit(4)
         new_amount = args.amount
+        
     if new_amount < 100:
-        service_info['selectors'] = "{%s={weight=%s}}" % (traffic_version, float(new_amount)/100)
+        backends[0]["weight"] = float(new_amount)/100
     else:
-        new_amount = 100
-        service_info['default'] = traffic_version
-        service_info['selectors'] = None
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+        del backends[0]["weight"]
+        del backends[1]
+
+    #print json.dumps(weight_rule, indent=2)
+    r = a8_put('{0}/v1/rules'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
-               json.dumps(service_info),
+               json.dumps({"rules": [ weight_rule ]}),
                showcurl=args.debug)
     fail_unless(r, 200)
     if new_amount == 100:
@@ -556,21 +725,161 @@ def traffic_step(args):
         print 'Transfer step for {}: diverting {}% of traffic from {} to {}'.format(args.service, new_amount, default_version, traffic_version)
 
 def traffic_abort(args):
-    r = a8_get('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+    r = a8_get('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
     service_info = r.json()
-    if not service_info['selectors']:
-        print "Invalid state for abort operation"
+    #service_info = {"rules": test_routing_rules} #FB TEMP
+
+    routing_rules = sort_rules(service_info["rules"])
+    weight_rule = routing_rules[-1]
+    
+    backends = weight_rule["route"]["backends"]
+    if len(backends) != 2 or "weight" not in backends[0] or "weight" in backends[1]:
+        print "Invalid state for step operation"
         sys.exit(5)
-    default_version = service_info.get('default')
-    if not default_version:
-        default_version = NO_VERSION
-    service_info['selectors'] = None
-    r = a8_put('{0}/v1/versions/{1}'.format(args.a8_controller_url, args.service),
+
+    default_version = tags_to_version(backends[1]["tags"])
+    del backends[0]
+
+    #print json.dumps(weight_rule, indent=2)
+    r = a8_put('{0}/v1/rules'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
-               json.dumps(service_info),
+               json.dumps({"rules": [ weight_rule ]}),
                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
+    
+'''    
+test_routing_rules = json.loads("""
+[
+  {
+    "priority": 1, 
+    "route": {
+      "backends": [
+        {
+          "weight": 0.25, 
+          "tags": [
+            "v2"
+          ]
+        }, 
+        {
+          "tags": [
+            "v1"
+          ]
+        }
+      ]
+    }, 
+    "destination": "reviews"
+  }, 
+  {
+    "priority": 2, 
+    "route": {
+      "backends": [
+        {
+          "tags": [
+            "v3"
+          ]
+        }
+      ]
+    }, 
+    "destination": "reviews", 
+    "match": {
+      "headers": {
+        "Cookie": ".*?user=shriram"
+      }
+    }
+  }, 
+  {
+    "priority": 3, 
+    "route": {
+      "backends": [
+        {
+          "tags": [
+            "v4"
+          ]
+        }
+      ]
+    }, 
+    "destination": "reviews", 
+    "match": {
+      "headers": {
+        "Foo": "bar"
+      }
+    }
+  }
+]
+""")
+
+test_routing_rules2 = json.loads("""
+[
+  {
+    "priority": 1, 
+    "route": {
+      "backends": [
+        {
+          "tags": [
+            "v1"
+          ]
+        }
+      ]
+    }, 
+    "destination": "ratings"
+  }
+]""")
+
+test_fault_rules = json.loads("""
+[
+  {
+    "destination": "ratings",
+    "id": "action123",
+    "priority": 5,
+    "match": {
+      "source": {
+        "name": "reviews",
+        "tags": [ "v2" ]
+      },
+      "headers": {
+        "Cookie": ".*?user=jason"
+      }
+    },
+    "actions": [
+      {
+        "action": "delay",
+        "probability": 1,
+        "tags": [ "v1" ],
+        "duration": 7
+      }
+    ]
+  },
+  {
+    "destination": "ratings",
+    "id": "action345",
+    "priority": 10,
+    "match": {
+      "source": {
+        "name": "bar",
+        "tags": [ "v1" ]
+      },
+      "headers": {
+        "Foo": "bar"
+      }
+    },
+    "actions": [
+      {
+        "action": "delay",
+        "probability": 0.5,
+        "tags": [ "v1" ],
+        "duration": 2
+      },
+      {
+        "action": "abort",
+        "probability": 0.25,
+        "tags": [ "v1" ],
+        "return_code": 400
+      }
+    ]
+  }
+]""")
+'''
