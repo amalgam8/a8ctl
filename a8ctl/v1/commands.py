@@ -26,7 +26,6 @@ import datetime, time
 import pprint
 from parse import compile
 from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
-from boto.gs.cors import HEADER
 
 def passOrfail(result):
     if result:
@@ -150,7 +149,6 @@ def fail_unless(response, code_or_codes):
         sys.exit(3)
 
 def is_active(service, default_version, registry_url, registry_token, debug=False):
-    return True #FB TEMP
     r = a8_get('{0}/api/v1/services/{1}'.format(registry_url, service), registry_token, showcurl=debug)
     if r.status_code == 200:
         instance_list = r.json()["instances"]
@@ -337,7 +335,7 @@ def service_routing(args):
                 args.a8_controller_token,
                 showcurl=args.debug)
     fail_unless(r, 200)
-    service_rules = r.json()["rules"]
+    service_rules = r.json()["services"]
     registry_url, registry_token = args.a8_registry_url, args.a8_registry_token
     r = a8_get('{0}/api/v1/services'.format(registry_url), registry_token, showcurl=args.debug)
     fail_unless(r, 200)
@@ -347,6 +345,8 @@ def service_routing(args):
 
     result_list = []
     for service, routing_rules in service_rules.iteritems():
+        if service in service_list:
+            service_list.remove(service)
         default, selectors = get_routes(routing_rules)
         if selectors:
             result_list.append({"service": service, "default": default, "selectors": selectors})
@@ -387,10 +387,10 @@ def set_routing(args):
                 weight = float(value.strip())
                 weight_list.insert(0, (version, weight))
             elif kind == 'user':
-                user = value.strip()
+                user = value.strip(' "')
                 header_list.insert(0, (version, "Cookie", ".*?user=" + user))
             elif kind == 'header':
-                header, sep, pattern = value.strip().partition(':')
+                header, sep, pattern = value.strip(' "').partition(':')
                 header_list.insert(0, (version, header, pattern))
             else:
                 print "Unrecognized --selector key (%s) in selector: %s" % (kind, selector)
@@ -404,15 +404,15 @@ def set_routing(args):
         routing_request["rules"].insert(0, header_rule(args.service, version, header, pattern, priority))
     
     #print json.dumps(routing_request, indent=2)
-    r = a8_put('{0}/v1/rules/{1}/routes'.format(args.a8_controller_url, args.service),
+    r = a8_put('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                json.dumps(routing_request),
                showcurl=args.debug)
-    fail_unless(r, 200)
+    fail_unless(r, [200,201])
     print 'Set routing rules for microservice', args.service
 
 def delete_routing(args):
-    r = a8_delete('{0}/v1/rules/{1}/routes'.format(args.a8_controller_url, args.service),
+    r = a8_delete('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
@@ -423,7 +423,7 @@ def rules_list(args):
                args.a8_controller_token,
                showcurl=args.debug)
     fail_unless(r, 200)
-    service_rules = r.json()
+    service_rules = r.json()["services"]
     #service_rules = { "ratings": test_fault_rules } #FB TEMP
 
     result_list = []
@@ -491,10 +491,9 @@ def set_rule(args):
 
     r = a8_get('{}/v1/rules/actions/{}'.format(args.a8_controller_url, destination_name),
                 args.a8_controller_token,
-                json.dumps(payload),
                 showcurl=args.debug)
-    fail_unless(r, [200, 404])
-    if r.status_code == 200:
+    fail_unless(r, 200)
+    if r.json()["rules"]:
         print "Rule already set for destination service {}".format(args.destination)
         sys.exit(6)
     
@@ -666,9 +665,9 @@ def traffic_start(args):
     if args.amount == 100:
         backends[0]["tags"] = version_to_tags(args.version)
     else:
-        backends.insert(0, {"tags": version_to_tags(args.version), "weight": args.amount})
+        backends.insert(0, {"tags": version_to_tags(args.version), "weight": float(args.amount)/100})
     
-    print json.dumps(weight_rule, indent=2)
+    #print json.dumps(weight_rule, indent=2)
     r = a8_put('{0}/v1/rules'.format(args.a8_controller_url, args.service),
                args.a8_controller_token,
                json.dumps({"rules": [ weight_rule ]}),
