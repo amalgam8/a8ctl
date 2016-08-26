@@ -620,7 +620,7 @@ def add_action(args):
     current_rules = r.json()["rules"]
     
     if args.priority:
-        priority = args.priority
+        priority = int(args.priority)
     else:
         priority = 10
         for rule in current_rules:
