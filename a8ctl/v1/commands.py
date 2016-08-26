@@ -196,11 +196,11 @@ def fault_rule(source, destination_name, destination_version, header, pattern, p
         },
         "actions" : []
     }
-    source_name, source_version = split_service(source)
-    source = { "name": source_name }
-    if source_version:
-        source["tags"] = [ source_version ]
-    rule["match"]["source"] = source
+    if source:
+        source_name, source_version = split_service(source)
+        rule["match"]["source"] = { "name": source_name }
+        if source_version:
+            rule["match"]["source"]["tags"] = [ source_version ]
     if delay_probability:
         action = {
             "action" : "delay",
@@ -219,6 +219,23 @@ def fault_rule(source, destination_name, destination_version, header, pattern, p
         if destination_version:
             action["tags"] = [ destination_version ]
         rule["actions"].append(action)
+    return rule
+
+def action_rule(source, destination, headers, priority, actions):
+    rule = {
+        "destination": destination,
+        "priority": priority,
+        "match": {
+        },
+        "actions" : actions
+    }
+    if source:
+        source_name, source_version = split_service(source)
+        rule["match"]["source"] = { "name": source_name }
+        if source_version:
+            rule["match"]["source"]["tags"] = [ source_version ]
+    if headers:
+         rule["match"]["headers"] = headers
     return rule
 
 def split_service(input):
@@ -293,9 +310,10 @@ def get_routes(routing_rules):
                 else:
                     default = version
     return default, selectors
-
+                         
 NO_VERSION = "-untagged-"
 SELECTOR_PARSER = compile("{version}({rule})")
+ACTION_PARSER = compile("{version}({weight}->{action}={value})")
 
 ############################################
 # CLI Commands
@@ -419,6 +437,7 @@ def delete_routing(args):
     print 'Deleted routing rules for microservice', args.service
 
 def rules_list(args):
+    sys.stderr.write("WARNING: deprecated command. Will be removed in the future. Use action-list instead.\n")
     r = a8_get('{0}/v1/rules/actions'.format(args.a8_controller_url),
                args.a8_controller_token,
                showcurl=args.debug)
@@ -441,24 +460,24 @@ def rules_list(args):
                     for header, pattern in match["headers"].iteritems():
                         action_entry["header"] = header
                         action_entry["header_pattern"] = pattern
-                        break # TODO: support more than one header?
+                        break # Ignore more than one header
             tagged_destinations = set()
             delay_set = False
             abort_set = False
             for action in rule["actions"]:
                 if action["action"] == "delay":
-                    if delay_set: continue # Ignore all but the first one. TODO: handle this case better?
+                    if delay_set: continue # Ignore all but the first one.
                     action_entry["delay"] = action["duration"]
                     action_entry["delay_probability"] = action["probability"]
                     tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
                     delay_set = True
                 elif action["action"] == "abort":
-                    if abort_set: continue # Ignore all but the first one. TODO: handle this case better?
+                    if abort_set: continue # Ignore all but the first one.
                     action_entry["abort_code"] = action["return_code"]
                     action_entry["abort_probability"] = action["probability"]
                     tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
                     abort_set = True
-            action_entry["destination"] = ",".join(tagged_destinations) #TODO: improve handling of multiple tags
+            action_entry["destination"] = ",".join(tagged_destinations)
             result_list.append(action_entry)
     if args.json:
         print json.dumps(result_list, indent=2)
@@ -479,6 +498,7 @@ def rules_list(args):
         print x
 
 def set_rule(args):
+    sys.stderr.write("WARNING: deprecated command. Will be removed in the future. Use action-add instead.\n")
     if not args.source or not args.destination or not args.header:
         print "You must specify --source, --destination, and --header"
         sys.exit(4)
@@ -493,14 +513,12 @@ def set_rule(args):
                 args.a8_controller_token,
                 showcurl=args.debug)
     fail_unless(r, 200)
-    if r.json()["rules"]:
-        print "Rule already set for destination service {}".format(args.destination)
-        sys.exit(6)
+    current_rules = r.json()["rules"]
     
     pattern = '.*?'+args.pattern if args.pattern else '.*'
     delay_probability = args.delay_probability if args.delay_probability > 0 else None
     abort_probability = args.abort_probability if args.abort_probability > 0 else None
-    priority = 10 # ???
+    priority = 10 + len(current_rules)
 
     rule = fault_rule(args.source,
                       destination_name,
@@ -512,10 +530,11 @@ def set_rule(args):
                       abort=args.abort_code,
                       abort_probability=abort_probability)
     
-    payload = { "rules": [ rule ] }
+    current_rules.append(rule)
+    payload = { "rules": current_rules }
     
     #print json.dumps(payload, indent=2)
-    r = a8_post('{}/v1/rules'.format(args.a8_controller_url),
+    r = a8_put('{}/v1/rules/actions/{}'.format(args.a8_controller_url, destination_name),
                 args.a8_controller_token,
                 json.dumps(payload),
                 showcurl=args.debug)
@@ -523,12 +542,149 @@ def set_rule(args):
     print 'Set fault injection rule between %s and %s' % (args.source, args.destination)
 
 def clear_rules(args):
-    #TODO: How to delete actionsl only? This one deletes actions and routes.
-    r = a8_delete('{0}/v1/rules'.format(args.a8_controller_url),
-                  args.a8_controller_token,
-                  showcurl=args.debug)
+    sys.stderr.write("WARNING: deprecated command. Will be removed in the future. Use rule-delete instead.\n")
+    r = a8_get('{0}/v1/rules/actions'.format(args.a8_controller_url),
+               args.a8_controller_token,
+               showcurl=args.debug)
+    fail_unless(r, 200)
+    service_rules = r.json()["services"]
+    #service_rules = { "ratings": test_fault_rules } #FB TEMP
+
+    for destination in service_rules:
+        r = a8_delete('{0}/v1/rules/actions/{1}'.format(args.a8_controller_url, destination),
+                      args.a8_controller_token,
+                      showcurl=args.debug)
     fail_unless(r, 200)
     print 'Cleared fault injection rules from all microservices'
+
+def action_list(args):
+    r = a8_get('{0}/v1/rules/actions'.format(args.a8_controller_url),
+               args.a8_controller_token,
+               showcurl=args.debug)
+    fail_unless(r, 200)
+    service_rules = r.json()["services"]
+    #service_rules = { "ratings": test_fault_rules } #FB TEMP
+
+    result_list = []
+    for action_rules in service_rules.itervalues():
+        for rule in sort_rules(action_rules):
+            action_entry = {
+                "id": rule["id"],
+                "destination": rule["destination"],
+                "priority": rule["priority"],
+                "actions": []
+            }
+            if "match" in rule:
+                match = rule["match"]
+                if "source" in match:
+                    action_entry["source"] = versioned_service_name(match["source"]["name"], match["source"].get("tags"))
+                if "headers" in match:
+                    action_entry["headers"] = []
+                    for header, pattern in match["headers"].iteritems():
+                        action_entry["headers"].append(header + ":" + pattern)
+            for action in rule["actions"]:
+                version = tags_to_version(action.get("tags"))
+                if action["action"] == "delay":
+                    action_entry["actions"].append("%s(%s->delay=%s)" % (version, action["probability"], action["duration"]))                     
+                elif action["action"] == "abort":
+                    action_entry["actions"].append("%s(%s->abort=%s)" % (version, action["probability"], action["return_code"]))                     
+            result_list.append(action_entry)
+    if args.json:
+        print json.dumps(result_list, indent=2)
+    else:
+        x = PrettyTable(["Destination", "Source", "Headers", "Priority", "Actions", "Rule Id"])
+        x.align = "l"
+        for entry in result_list:
+            x.add_row([entry["destination"],
+                       entry.get("source", ""),
+                       ", ".join(entry.get("headers", [])),
+                       entry["priority"],
+                       ", ".join(entry["actions"]),
+                       entry["id"]
+            ])
+        print x
+
+def add_action(args):
+    if not args.destination or not (args.source or args.header or args.cookie):
+        print "You must specify --destination, and at least one --source, --header, or --cookie parameter"
+        sys.exit(4)
+
+    if not args.action:
+        print "You must specify at least one --action parameter"
+        sys.exit(5)
+
+    r = a8_get('{}/v1/rules/actions/{}'.format(args.a8_controller_url, args.destination),
+                args.a8_controller_token,
+                showcurl=args.debug)
+    fail_unless(r, 200)
+    current_rules = r.json()["rules"]
+    
+    if args.priority:
+        priority = args.priority
+    else:
+        priority = 10
+        for rule in current_rules:
+            if rule["priority"] >= priority:
+                priority = rule["priority"] + 1
+
+    if args.header or args.cookie:
+        headers = {}
+        if args.header:
+            for header in args.header:
+                key, sep, value = header.partition(':')
+                headers[key] = value
+        if args.cookie:
+            for cookie in args.cookie:
+                headers['Cookie'] = '.*?'+cookie
+    else:
+        headers = None
+        
+    actions = []
+    for action in args.action:
+        r = ACTION_PARSER.parse(action)
+        if not r:
+            print "Invalid --action value: %s" % action
+            sys.exit(6)
+        version = r['version'].strip()
+        weight = float(r['weight'].strip())
+        action_type = r['action'].strip()
+        value = r['value'].strip()
+        if action_type == 'delay':
+            rule_action = {
+                "action" : "delay",
+                "probability" : weight,
+                "duration": float(value),
+                "tags": version_to_tags(version)
+            }
+            actions.append(rule_action)
+        elif action_type == 'abort':
+            rule_action = {
+                "action" : "abort",
+                "probability" : weight,
+                "return_code": int(value),
+                "tags": version_to_tags(version)
+            }
+            actions.append(rule_action)
+        else:
+            print "Invalid --action type: %s" % action
+            sys.exit(7)
+            
+    rule = action_rule(args.source,
+                       args.destination,
+                       headers,
+                       priority,
+                       actions)
+    
+    current_rules.append(rule)
+    payload = { "rules": current_rules }
+    
+    #print json.dumps(payload, indent=2)
+    r = a8_put('{}/v1/rules/actions/{}'.format(args.a8_controller_url, args.destination),
+                args.a8_controller_token,
+                json.dumps(payload),
+                showcurl=args.debug)
+    fail_unless(r, 201)
+    print 'Set action rule for destination %s' % args.destination
 
 def delete_rule(args):
     r = a8_delete('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
