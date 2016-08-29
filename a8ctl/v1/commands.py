@@ -518,7 +518,10 @@ def set_rule(args):
     pattern = '.*?'+args.pattern if args.pattern else '.*'
     delay_probability = args.delay_probability if args.delay_probability > 0 else None
     abort_probability = args.abort_probability if args.abort_probability > 0 else None
-    priority = 10 + len(current_rules)
+    priority = 10
+    for rule in current_rules:
+        if rule["priority"] >= priority:
+            priority = rule["priority"] + 10
 
     rule = fault_rule(args.source,
                       destination_name,
@@ -625,7 +628,7 @@ def add_action(args):
         priority = 10
         for rule in current_rules:
             if rule["priority"] >= priority:
-                priority = rule["priority"] + 1
+                priority = rule["priority"] + 10
 
     if args.header or args.cookie:
         headers = {}
