@@ -104,7 +104,7 @@ class A8AssertionChecker(object):
     The asssertion checker
     """
 
-    def __init__(self, es_host=None, header=None, pattern=None,
+    def __init__(self, es_host=None, header=None, pattern=None, test_id=None,
                  start_time=None, end_time=None,
                  header_field_name='gremlin_header_name',
                  pattern_field_name='gremlin_header_val', index="", debug=False):
@@ -118,6 +118,7 @@ class A8AssertionChecker(object):
         self.debug=debug
         self.header = header
         self.pattern = pattern
+        self.test_id = test_id
         self.start_time=start_time
         self.end_time=end_time
         self.header_field_name = header_field_name

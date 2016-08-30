@@ -11,6 +11,16 @@ import datetime, time
 logging.basicConfig()
 requests_log = logging.getLogger("requests.packages.urllib3")
 
+def split_service(input):
+    colon = input.rfind(':')
+    if colon != -1:
+        service = input[:colon]
+        version = input[colon+1:]
+    else:
+        service = input
+        version = None
+    return service, version
+
 def _duration_to_floatsec(s):
     r = re.compile(r"(([0-9]*(\.[0-9]*)?)(\D+))", re.UNICODE)
     start=0
@@ -50,7 +60,7 @@ class A8FailureGenerator(object):
         """
         self.app = app
         self.debug = debug
-        self._id = None
+        self._id = str(uuid.uuid1())
         self._queue = []
         self.header = header
         self.pattern = pattern
@@ -78,6 +88,9 @@ class A8FailureGenerator(object):
             logging.getLogger().setLevel(logging.DEBUG)
             requests_log.setLevel(logging.DEBUG)
             requests_log.propagate = True
+            
+    def get_id(self):
+        return self._id
 
     def add_rule(self, **args):
         """
@@ -104,45 +117,61 @@ class A8FailureGenerator(object):
         searchstring: <string> string to replace when Mangle is enabled -- unused
         replacestring: <string> string to replace with for Mangle fault -- unused
         """
-
-        a8rulekeys = {
-                  "source": "source",
-                  "dest": "destination",
-                  "delayprobability": "delay_probability",
-                  "abortprobability": "abort_probability",
-                  "delaytime": "delay",
-                  "errorcode": "return_code"
-        }
-
-        myrule = {
-                  "source": "",
-                  "destination": "",
-                  "header" : self.header,
-                  "pattern": self.pattern,
-                  "delay_probability": 0.0,
-                  "abort_probability": 0.0,
-                  "delay": 0,
-                  "return_code": 0
-        }
-
         rule = args.copy()
-        #copy
-        for i in rule.keys():
-            if i not in a8rulekeys:
-                continue
-            myrule[a8rulekeys[i]] = rule[i]
+        services = self.app.get_services()
 
         #check defaults
-        services = self.app.get_services()
-        assert myrule["source"] != "" and myrule["destination"] != ""
-        assert myrule["header"] != "" and myrule["pattern"] != ""
-        assert myrule["source"] in services and myrule["destination"] in services
-        assert myrule['delay_probability'] >0.0 or myrule['abort_probability'] >0.0
-        if myrule["delay_probability"] > 0.0:
-            assert myrule["delay"] != ""
-            myrule["delay"] = _duration_to_floatsec(myrule["delay"])
-        if myrule["abort_probability"] > 0.0:
-            assert myrule["return_code"] >= 0
+        assert self.header != "" and self.pattern != ""
+        assert rule["source"] != "" and rule["dest"] != ""
+        assert rule["source"] in services and rule["dest"] in services
+        assert "delayprobability" in rule or "abortprobability" in rule
+        if "delayprobability" in rule:
+            assert rule['delayprobability'] > 0.0
+            assert rule.get("delaytime", "") != ""
+        if "abortprobability" in rule:
+            assert rule['abortprobability'] > 0.0
+            assert rule.get("errorcode", 0) != 0
+
+        source_name, source_version = split_service(rule["source"])
+        destination_name, destination_version = split_service(rule["dest"])
+
+        a8rule = {
+            "destination": destination_name,
+            "priority": 10,
+            "match": {
+                "source": {
+                   "name": source_name
+                },
+                "headers": {
+                    self.header: self.pattern
+                }
+            },
+            "actions": []
+        }
+
+        if source_version:
+            a8rule["match"]["source"]["tags"] = source_version.split(",")
+            
+        if "delayprobability" in rule:
+            action = {
+                "action": "delay",
+                "probability": rule["delayprobability"],
+                "duration": _duration_to_floatsec(rule["delaytime"])
+            }
+            if destination_version:
+                action["tags"] = destination_version.split(",")
+            a8rule["actions"].append(action)
+
+        if "abortprobability" in rule:
+            action = {
+                "action": "abort",
+                "probability": rule["abortprobability"],
+                "return_code": rule["errorcode"]
+            }
+            if destination_version:
+                action["tags"] = destination_version.split(",")
+            a8rule["actions"].append(action)
+                   
         self._queue.append(myrule)
 
     def clear_rules_from_all_proxies(self):
@@ -156,9 +185,10 @@ class A8FailureGenerator(object):
             headers = {"Content-Type" : "application/json"}
             if self.a8_controller_token != "" :
                 headers['Authorization'] = "Bearer " + self.a8_controller_token
-            resp = requests.delete(self.a8_controller_url,
-                                   headers = headers)
-            resp.raise_for_status()
+            ########resp = requests.delete(self.a8_controller_url,
+            ########                       headers = headers)
+            ########resp.raise_for_status()
+            ######## TODO: THis won't work any more. Removes ALL rules (actions and routes)
         except requests.exceptions.ConnectionError, e:
             print "FAILURE: Could not communicate with control plane %s" % self.a8_controller_url
             print e
@@ -192,16 +222,31 @@ class A8FailureGenerator(object):
             graph[r['source']][r['destination']]['color']='red'
         for e in graph.edges(data='color'):
             if e[2] == 'black': #uncovered edge
+                source_name, source_version = split_service(e[0])
+                destination_name, destination_version = split_service(e[1])
                 log_rule = {
-                    "source": e[0],
-                    "destination": e[1],
-                    "header" : self.header,
-                    "pattern": self.pattern,
-                    "delay_probability": 0.0,
-                    "abort_probability": 0.0,
-                    "delay": 0,
-                    "return_code": -1
+                    "destination": destination_name,
+                    "priority": 10,
+                    "match": {
+                        "source": {
+                            "name": source_name
+                        },
+                        "headers": {
+                            self.header: self.pattern
+                        }
+                    },
+                    "actions": [
+                        {
+                            "action": "trace",
+                             "log_key": "gremlin_recipe_id",
+                            "log_value": self._id
+                        }
+                    ]
                 }
+                if source_version:
+                    log_rule["match"]["source"]["tags"] = source_version.split(",")
+                if destination_version:
+                    log_rule["actions"][0]["tags"] = destination_version.split(",")
                 self._queue.append(log_rule)                
                 if self.debug:
                     print '%s - %s' % ('log_rule', str(log_rule))
