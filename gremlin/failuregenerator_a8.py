@@ -21,6 +21,12 @@ def split_service(input):
         version = None
     return service, version
 
+def versioned_service_name(name, tags):
+    service = name
+    if tags:
+       service += ":" + ",".join(tags)
+    return service
+
 def _duration_to_floatsec(s):
     r = re.compile(r"(([0-9]*(\.[0-9]*)?)(\D+))", re.UNICODE)
     start=0
@@ -62,6 +68,7 @@ class A8FailureGenerator(object):
         self.debug = debug
         self._id = str(uuid.uuid1())
         self._queue = []
+        self._rule_ids = []
         self.header = header
         self.pattern = pattern
         self.a8_controller_url = a8_controller_url
@@ -157,6 +164,8 @@ class A8FailureGenerator(object):
 
         if source_version:
             a8rule["match"]["source"]["tags"] = source_version.split(",")
+        if destination_version:
+            a8rule["actions"][0]["tags"] = destination_version.split(",")
             
         if "delayprobability" in rule:
             action = {
@@ -178,7 +187,7 @@ class A8FailureGenerator(object):
                 action["tags"] = destination_version.split(",")
             a8rule["actions"].append(action)
                    
-        self._queue.append(myrule)
+        self._queue.append(a8rule)
 
     def clear_rules_from_all_proxies(self):
         """
@@ -191,8 +200,7 @@ class A8FailureGenerator(object):
             headers = {"Content-Type" : "application/json"}
             if self.a8_controller_token != "" :
                 headers['Authorization'] = "Bearer " + self.a8_controller_token
-            for rule in self._queue:
-                rule_id = rule["id"]
+            for rule_id in self._rule_ids:
                 resp = requests.delete(self.a8_controller_url + "?id=" + rule_id,
                                        headers = headers)
                 resp.raise_for_status()
@@ -208,10 +216,12 @@ class A8FailureGenerator(object):
             if self.a8_controller_token != "" :
                 headers['Authorization'] = "Bearer " + self.a8_controller_token
             payload = {"rules": self._queue}
+            print json.dumps(payload, indent=2)
             resp = requests.post(self.a8_controller_url,
                                  headers = headers,
                                  data=json.dumps(payload))
             resp.raise_for_status()
+            self._rule_ids = resp.json()["ids"]
         except requests.exceptions.ConnectionError, e:
             print "FAILURE: Could not communicate with control plane %s" % self.a8_controller_url
             print e
@@ -225,7 +235,9 @@ class A8FailureGenerator(object):
                 graph[e[0]][e[1]]['color'] = 'black'
         ##For all covered edges (by rules), color them red
         for r in self._queue:
-            graph[r['source']][r['destination']]['color']='red'
+            source = versioned_service_name(r["match"]["source"]["name"], r["match"]["source"].get("tags"))
+            dest = versioned_service_name(r["destination"], r["actions"][0].get("tags"))
+            graph[source][dest]['color']='red'
         for e in graph.edges(data='color'):
             if e[2] == 'black': #uncovered edge
                 source_name, source_version = split_service(e[0])
