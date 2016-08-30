@@ -160,7 +160,7 @@ class A8FailureGenerator(object):
             "actions": [
                 {
                     "action": "trace",
-                     "log_key": "gremlin_recipe_id",
+                    "log_key": "gremlin_recipe_id",
                     "log_value": self._id
                 }
             ]
@@ -197,7 +197,6 @@ class A8FailureGenerator(object):
         """
             Clear fault injection rules from all known service proxies.
         """
-        #self._queue = [] 
         if self.debug:
             print 'Clearing rules'
         try:
@@ -220,7 +219,7 @@ class A8FailureGenerator(object):
             if self.a8_controller_token != "" :
                 headers['Authorization'] = "Bearer " + self.a8_controller_token
             payload = {"rules": self._queue}
-            print json.dumps(payload, indent=2)
+            #print json.dumps(payload, indent=2)
             resp = requests.post(self.a8_controller_url,
                                  headers = headers,
                                  data=json.dumps(payload))
@@ -234,14 +233,6 @@ class A8FailureGenerator(object):
     # Generate empty rules to just log requests with Gremlin header
     def _generate_log_rules(self):
         graph = self.app._get_networkX()
-        ##color edges initially
-        for e in graph.edges():
-                graph[e[0]][e[1]]['color'] = 'black'
-        ##For all covered edges (by rules), color them red
-        for r in self._queue:
-            source = versioned_service_name(r["match"]["source"]["name"], r["match"]["source"].get("tags"))
-            dest = versioned_service_name(r["destination"], r["actions"][0].get("tags"))
-            graph[source][dest]['color']='red'
         for e in graph.edges(data='color'):
             if e[2] == 'black': #uncovered edge
                 source_name, source_version = split_service(e[0])
@@ -260,7 +251,7 @@ class A8FailureGenerator(object):
                     "actions": [
                         {
                             "action": "trace",
-                             "log_key": "gremlin_recipe_id",
+                            "log_key": "gremlin_recipe_id",
                             "log_value": self._id
                         }
                     ]
