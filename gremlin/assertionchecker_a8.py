@@ -104,33 +104,34 @@ class A8AssertionChecker(object):
     The asssertion checker
     """
 
-    def __init__(self, es_host=None, header=None, pattern=None, test_id=None,
-                 start_time=None, end_time=None,
-                 header_field_name='gremlin_header_name',
-                 pattern_field_name='gremlin_header_val', index="", debug=False):
+    def __init__(self, es_host=None,
+                 trace_log_value=None,
+                 trace_log_key='gremlin_recipe_id',
+                 index="", debug=False):
         """
         param host: the elasticsearch host
-        header: the gremlin header used while injecting faults
-        pattern: the regex pattern that was used to pick requests
+        trace_log_key: the json field name holding the test ID (default is 'gremlin_recipe_id')
+        trace_log_value: the recipe ID
         """
-        assert es_host is not None and header is not None and pattern is not None
+        assert es_host is not None and trace_log_value is not None
         self._es = Elasticsearch(hosts=[es_host])
         self.debug=debug
-        self.header = header
-        self.pattern = pattern
-        self.test_id = test_id
-        self.start_time=start_time
-        self.end_time=end_time
-        self.header_field_name = header_field_name
-        self.pattern_field_name = pattern_field_name
-        if self.start_time or self.end_time:
-            self.time_range={"@timestamp":{}}
-            if self.start_time:
-                self.time_range["@timestamp"]["gte"]=self.start_time
-            if self.end_time:
-                self.time_range["@timestamp"]["lte"]=self.end_time
-        else:
-            self.time_range = None
+        # self.header = header
+        # self.pattern = pattern
+        self.trace_log_key = trace_log_key
+        self.trace_log_value = trace_log_value
+        # self.start_time=start_time
+        # self.end_time=end_time
+        # self.header_field_name = header_field_name
+        # self.pattern_field_name = pattern_field_name
+        # if self.start_time or self.end_time:
+        #     self.time_range={"@timestamp":{}}
+        #     if self.start_time:
+        #         self.time_range["@timestamp"]["gte"]=self.start_time
+        #     if self.end_time:
+        #         self.time_range["@timestamp"]["lte"]=self.end_time
+        # else:
+        self.time_range = None
 
         if index is None or index == "":
             self.index = [ "_all" ]
@@ -142,7 +143,6 @@ class A8AssertionChecker(object):
 
         self.functiondict = {
             'bounded_response_time' : self.check_bounded_response_time,
-            'http_success_status' : self.check_http_success_status,
             'http_status' : self.check_http_status,
             'bounded_retries' : self.check_bounded_retries,
             'at_most_requests': self.check_at_most_requests
@@ -160,14 +160,13 @@ class A8AssertionChecker(object):
             "query": {
                 "bool": {
                     "must": [
-                        {"match": {self.header_field_name: self.header}},
-                        {"match": {self.pattern_field_name: self.pattern}}
+                        {"match": {self.trace_log_key: self.trace_log_value}}
                     ]
                 }
             }
         }
-        if self.time_range:
-            body["filter"] = {"range" : self.time_range}
+        # if self.time_range:
+        #     body["filter"] = {"range" : self.time_range}
         if src:
             body["query"]["bool"]["must"].append({"prefix": {"src": src}})
         if dst:
@@ -200,37 +199,6 @@ class A8AssertionChecker(object):
                     print errormsg
         return GremlinTestResult(result, errormsg)
 
-    #This isn't working with elasticsearch 2.0+. Neither does regexp
-    def check_http_success_status(self, **kwargs):
-        data = self._es.search(index=self.index, body={
-            "size": max_query_results,
-            "query": {
-                "filtered": {
-                    "query": {
-                        "match_all": {}
-                    },
-                    "filter": {
-                        "and" : [
-                            {"exists": {"field": "status"}},
-                            { "prefix": {self.header_field_name: self.header}},
-                            { "prefix": {self.pattern_field_name: self.pattern}}
-                        ]
-                    }
-                }
-            }})
-        result = True
-        errormsg = ""
-        if not self._check_non_zero_results(data):
-            result = False
-            errormsg = "No log entries found"
-            return GremlinTestResult(result, errormsg)
-
-        for message in data["hits"]["hits"]:
-            if int(message['_source']["status"]) != 200:
-                errormsg = "{} -> {} - expected HTTP 200 but found found HTTP {}".format(
-                    message["_source"]["src"], message["_source"]["dst"], message["_source"]["status"])
-                result = False
-        return GremlinTestResult(result, errormsg)
 
     ##check if the interaction between a given pair of services resulted in the required response status
     def check_http_status(self, **kwargs):
@@ -269,7 +237,6 @@ class A8AssertionChecker(object):
         :param num_requests the maximum number of requests that we expect
         :return:
         """
-        # TODO: Does the proxy support logging of instances so that grouping by instance is possible?
 
         # Fetch requests for src->dst
         data = self._es.search(index=self.index, body={
@@ -284,8 +251,7 @@ class A8AssertionChecker(object):
                             "must": [
                                 {"term": {"src": source}},
                                 {"prefix": {"dst": dest}},
-                                { "prefix": {self.header_field_name: self.header}},
-                                { "prefix": {self.pattern_field_name: self.pattern}}
+                                { "term": {self.trace_log_key: self.trace_log_value}}
                             ]
                         }
                     }
@@ -296,7 +262,7 @@ class A8AssertionChecker(object):
                 "size": max_query_results,
                 "byid": {
                     "terms": {
-                        "field": self.header_field_name,
+                        "field": self.trace_log_key,
                     }
                 }
             }
@@ -349,8 +315,7 @@ class A8AssertionChecker(object):
                             "must": [
                                 {"term": {"src": source}},
                                 {"prefix": {"dst": dest}},
-                                {"prefix": {self.header_field_name: self.header}},
-                                {"prefix": {self.pattern_field_name: self.pattern}}
+                                {"match": {self.trace_log_key: self.trace_log_value}}
                             ]
                         }
                     }
@@ -359,7 +324,7 @@ class A8AssertionChecker(object):
             "aggs": {
                 "byid": {
                     "terms": {
-                        "field": self.header_field_name if not by_uri else "uri",
+                        "field": self.trace_log_key if not by_uri else "uri",
                     }
                 }
             }
@@ -391,7 +356,7 @@ class A8AssertionChecker(object):
         # Now we have to check the timestamps
         for bucket in data["aggregations"]["byid"]["buckets"]:
             req_id = bucket["key"]
-            req_seq = _get_by(self.header_field_name, req_id, data["hits"]["hits"])
+            req_seq = _get_by(self.trace_log_key, req_id, data["hits"]["hits"])
             req_seq.sort(key=lambda x: int(x['_source']["timestamp_in_ms"]))
             for i in range(len(req_seq) - 1):
                 observed = (req_seq[i + 1]['_source']["timestamp_in_ms"] - req_seq[i]['_source']["timestamp_in_ms"])/1000.0
