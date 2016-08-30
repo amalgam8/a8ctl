@@ -139,6 +139,10 @@ class A8FailureGenerator(object):
             assert rule['abortprobability'] > 0.0
             assert rule.get("errorcode", 0) != 0
 
+        graph = self.app._get_networkX()
+        ##For graph edges covered by rules, color them red
+        graph[rule['source']][rule['dest']]['color']='red'
+
         source_name, source_version = split_service(rule["source"])
         destination_name, destination_version = split_service(rule["dest"])
 
@@ -166,7 +170,11 @@ class A8FailureGenerator(object):
             a8rule["match"]["source"]["tags"] = source_version.split(",")
         if destination_version:
             a8rule["actions"][0]["tags"] = destination_version.split(",")
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 633c03f490964c9aa0912a0c30bb013c6b6d005b
         if "delayprobability" in rule:
             action = {
                 "action": "delay",
@@ -395,6 +403,11 @@ class A8FailureGenerator(object):
         """Add gremlins to environment"""
 
         assert isinstance(gremlins, dict) and 'gremlins' in gremlins
+        graph = self.app._get_networkX()
+        ##color edges initially
+        for e in graph.edges():
+            graph[e[0]][e[1]]['color'] = 'black'
+
         for gremlin in gremlins['gremlins']:
             self.setup_failure(**gremlin)
         self._generate_log_rules()
