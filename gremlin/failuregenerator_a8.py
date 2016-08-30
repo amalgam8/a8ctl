@@ -170,11 +170,7 @@ class A8FailureGenerator(object):
             a8rule["match"]["source"]["tags"] = source_version.split(",")
         if destination_version:
             a8rule["actions"][0]["tags"] = destination_version.split(",")
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> 633c03f490964c9aa0912a0c30bb013c6b6d005b
         if "delayprobability" in rule:
             action = {
                 "action": "delay",
