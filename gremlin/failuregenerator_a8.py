@@ -184,22 +184,22 @@ class A8FailureGenerator(object):
         """
             Clear fault injection rules from all known service proxies.
         """
-        self._queue = []        
+        #self._queue = [] 
         if self.debug:
             print 'Clearing rules'
         try:
             headers = {"Content-Type" : "application/json"}
             if self.a8_controller_token != "" :
                 headers['Authorization'] = "Bearer " + self.a8_controller_token
-            ########resp = requests.delete(self.a8_controller_url,
-            ########                       headers = headers)
-            ########resp.raise_for_status()
-            ######## TODO: THis won't work any more. Removes ALL rules (actions and routes)
+            for rule in self._queue:
+                rule_id = rule["id"]
+                resp = requests.delete(self.a8_controller_url + "?id=" + rule_id,
+                                       headers = headers)
+                resp.raise_for_status()
         except requests.exceptions.ConnectionError, e:
             print "FAILURE: Could not communicate with control plane %s" % self.a8_controller_url
             print e
             sys.exit(3)
-
 
     #TODO: Create a plugin model here, to support gremlinproxy and nginx
     def push_rules(self):
