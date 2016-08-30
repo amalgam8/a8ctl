@@ -21,12 +21,6 @@ def split_service(input):
         version = None
     return service, version
 
-def versioned_service_name(name, tags):
-    service = name
-    if tags:
-       service += ":" + ",".join(tags)
-    return service
-
 def _duration_to_floatsec(s):
     r = re.compile(r"(([0-9]*(\.[0-9]*)?)(\D+))", re.UNICODE)
     start=0

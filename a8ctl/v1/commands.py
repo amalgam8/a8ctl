@@ -477,6 +477,8 @@ def rules_list(args):
                     action_entry["abort_probability"] = action["probability"]
                     tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
                     abort_set = True
+                elif action["action"] == "trace":
+                    tagged_destinations.add(versioned_service_name(rule["destination"], action.get("tags")))
             action_entry["destination"] = ",".join(tagged_destinations)
             result_list.append(action_entry)
     if args.json:
@@ -590,7 +592,9 @@ def action_list(args):
                 if action["action"] == "delay":
                     action_entry["actions"].append("%s(%s->delay=%s)" % (version, action["probability"], action["duration"]))                     
                 elif action["action"] == "abort":
-                    action_entry["actions"].append("%s(%s->abort=%s)" % (version, action["probability"], action["return_code"]))                     
+                    action_entry["actions"].append("%s(%s->abort=%s)" % (version, action["probability"], action["return_code"]))
+                elif action["action"] == "trace":                     
+                    action_entry["actions"].append("%s(trace)" % (version)) #, action["log_key"], action["log_value"]))
             result_list.append(action_entry)
     if args.json:
         print json.dumps(result_list, indent=2)
