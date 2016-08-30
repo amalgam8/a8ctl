@@ -132,6 +132,10 @@ class A8FailureGenerator(object):
             assert rule['abortprobability'] > 0.0
             assert rule.get("errorcode", 0) != 0
 
+        graph = self.app._get_networkX()
+        ##For graph edges covered by rules, color them red
+        graph[rule['source']][rule['dest']]['color']='red'
+
         source_name, source_version = split_service(rule["source"])
         destination_name, destination_version = split_service(rule["dest"])
 
@@ -157,7 +161,9 @@ class A8FailureGenerator(object):
 
         if source_version:
             a8rule["match"]["source"]["tags"] = source_version.split(",")
-            
+        if destination_version:
+            a8rule["actions"][0]["tags"] = destination_version.split(",")
+
         if "delayprobability" in rule:
             action = {
                 "action": "delay",
@@ -178,7 +184,7 @@ class A8FailureGenerator(object):
                 action["tags"] = destination_version.split(",")
             a8rule["actions"].append(action)
                    
-        self._queue.append(myrule)
+        self._queue.append(a8rule)
 
     def clear_rules_from_all_proxies(self):
         """
@@ -220,12 +226,13 @@ class A8FailureGenerator(object):
     # Generate empty rules to just log requests with Gremlin header
     def _generate_log_rules(self):
         graph = self.app._get_networkX()
-        ##color edges initially
-        for e in graph.edges():
-                graph[e[0]][e[1]]['color'] = 'black'
-        ##For all covered edges (by rules), color them red
-        for r in self._queue:
-            graph[r['source']][r['destination']]['color']='red'
+        # ##color edges initially
+        # for e in graph.edges():
+        #         graph[e[0]][e[1]]['color'] = 'black'
+        # ##For all covered edges (by rules), color them red
+        # for r in self._queue:
+        #     graph[r['source']][r['destination']]['color']='red'
+        # Graph edges covered by rules have already been colored red. Other edges are black
         for e in graph.edges(data='color'):
             if e[2] == 'black': #uncovered edge
                 source_name, source_version = split_service(e[0])
@@ -383,6 +390,11 @@ class A8FailureGenerator(object):
         """Add gremlins to environment"""
 
         assert isinstance(gremlins, dict) and 'gremlins' in gremlins
+        graph = self.app._get_networkX()
+        ##color edges initially
+        for e in graph.edges():
+            graph[e[0]][e[1]]['color'] = 'black'
+
         for gremlin in gremlins['gremlins']:
             self.setup_failure(**gremlin)
         self._generate_log_rules()
