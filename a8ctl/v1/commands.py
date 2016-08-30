@@ -782,9 +782,9 @@ def run_recipe(args):
 
         log_server = checklist.get('log_server', args.a8_log_server)
 
-        # TODO: Obtain the logstash index as user input or use logstash-YYYY.MM.DD with current date and time.
-        ac = A8AssertionChecker(es_host=log_server, header=header, pattern=pattern, fg.get_id(),
-                                start_time=start_time, end_time=end_time, index=["_all"], debug=args.debug)
+        # TODO: Obtain the logstash index as user input or use logstash-YYYY.MM.DD with current date and time.                                                                                                                              
+        ac = A8AssertionChecker(es_host=log_server, trace_log_value=fg.get_id(),
+                index=["_all"], debug=args.debug)      
         results = ac.check_assertions(checklist, continue_on_error=True)
         if args.json:
             print json.dumps(results, indent=2)

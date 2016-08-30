@@ -146,7 +146,13 @@ class A8FailureGenerator(object):
                     self.header: self.pattern
                 }
             },
-            "actions": []
+            "actions": [
+                {
+                    "action": "trace",
+                     "log_key": "gremlin_recipe_id",
+                    "log_value": self._id
+                }
+            ]
         }
 
         if source_version:
