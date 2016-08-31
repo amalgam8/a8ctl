@@ -170,19 +170,33 @@ def base_route_rule(destination, version, priority):
     }
     return rule
 
-def weight_rule(destination, default_version, weighted_vesions=[], priority=1):
+def weight_rule(destination, default_version, weighted_vesions=[], priority=1, source=None):
     rule = base_route_rule(destination, default_version, priority)
     for version, weight in weighted_vesions:
         rule["route"]["backends"].insert(0, { "tags": [ version ], "weight": weight })
+    if source:
+        source_name, source_version = split_service(source)
+        rule["match"] = {
+            "source": {
+                "name": source_name
+            }
+        }
+        if source_version:
+            rule["match"]["source"]["tags"] = version_to_tags(source_version)
     return rule
 
-def header_rule(destination, version, header, pattern, priority):
+def header_rule(destination, version, header, pattern, priority, source=None):
     rule = base_route_rule(destination, version, priority)
     rule["match"] = {
       "headers": {
         header: pattern
       }
     }
+    if source:
+        source_name, source_version = split_service(source)
+        rule["match"]["source"] = { "name": source_name }
+        if source_version:
+            rule["match"]["source"]["tags"] = version_to_tags(source_version)
     return rule
 
 def fault_rule(source, destination_name, destination_version, header, pattern, priority, delay=None, delay_probability=None, abort=None, abort_probability=None):
@@ -200,7 +214,7 @@ def fault_rule(source, destination_name, destination_version, header, pattern, p
         source_name, source_version = split_service(source)
         rule["match"]["source"] = { "name": source_name }
         if source_version:
-            rule["match"]["source"]["tags"] = [ source_version ]
+            rule["match"]["source"]["tags"] = version_to_tags(source_version)
     if delay_probability:
         action = {
             "action" : "delay",
@@ -208,7 +222,7 @@ def fault_rule(source, destination_name, destination_version, header, pattern, p
             "duration": delay
         }
         if destination_version:
-            action["tags"] = [ destination_version ]
+            action["tags"] = version_to_tags(destination_version)
         rule["actions"].append(action)
     if abort_probability:
         action = {
@@ -217,7 +231,7 @@ def fault_rule(source, destination_name, destination_version, header, pattern, p
             "return_code": abort
         }
         if destination_version:
-            action["tags"] = [ destination_version ]
+            action["tags"] = version_to_tags(destination_version)
         rule["actions"].append(action)
     return rule
 
@@ -233,7 +247,7 @@ def action_rule(source, destination, headers, priority, actions):
         source_name, source_version = split_service(source)
         rule["match"]["source"] = { "name": source_name }
         if source_version:
-            rule["match"]["source"]["tags"] = [ source_version ]
+            rule["match"]["source"]["tags"] = version_to_tags(source_version)
     if headers:
          rule["match"]["headers"] = headers
     return rule
@@ -261,7 +275,7 @@ def versioned_service_name(name, tags):
        service += ":" + tags_to_version(tags)
     return service
 
-def get_match_selector(version, match):
+def get_match_selector(version, match, weight=None):
     selector = version + "("
     if "source" in match:
         selector += "source=" + versioned_service_name(match["source"]["name"], match["source"].get("tags"))
@@ -273,6 +287,8 @@ def get_match_selector(version, match):
                 selector += 'user="%s"' % value[len(".*?user="):]
             else:
                 selector += 'header="%s:%s"' % (header, value)
+    if weight:
+        selector += ',weight=%s' % weight
     selector += ")"
     return selector 
 
@@ -301,7 +317,9 @@ def get_routes(routing_rules):
                 version = tags_to_version(route["backends"][0]["tags"])
                 selectors.append(get_match_selector(version, match))
             else:
-                continue #TODO: future support for weighted match selectors?
+                for backend in route["backends"]:
+                    version = tags_to_version(backend["tags"])
+                    selectors.append(get_match_selector(version, match, backend.get("weight")))
         else:
             for backend in route["backends"]:
                 version = tags_to_version(backend["tags"])
@@ -414,12 +432,17 @@ def set_routing(args):
                 print "Unrecognized --selector key (%s) in selector: %s" % (kind, selector)
                 sys.exit(6)
 
-    priority = 1    
-    routing_request = { "rules": [ weight_rule(args.service, args.default, weight_list, priority) ] }
-    
+    priority = 1
+    if args.source:
+        routing_request = { "rules": [ weight_rule(args.service, args.default, [], priority) ] }
+        priority += 1
+        routing_request["rules"].insert(0, weight_rule(args.service, args.default, weight_list, priority, args.source))
+    else:
+        routing_request = { "rules": [ weight_rule(args.service, args.default, weight_list, priority) ] }
+
     for version, header, pattern in header_list:
         priority += 1
-        routing_request["rules"].insert(0, header_rule(args.service, version, header, pattern, priority))
+        routing_request["rules"].insert(0, header_rule(args.service, version, header, pattern, priority, args.source))
     
     #print json.dumps(routing_request, indent=2)
     r = a8_put('{0}/v1/rules/routes/{1}'.format(args.a8_controller_url, args.service),

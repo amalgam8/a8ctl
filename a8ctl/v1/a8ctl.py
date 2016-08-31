@@ -99,6 +99,8 @@ def main():
     parser_set_routing.set_defaults(func=commands.set_routing)
     parser_set_routing.add_argument("service",
                                      help='The microservice name')
+    parser_set_routing.add_argument("--source",
+                                    help='Only apply rules to requests from the specified source service')
     parser_set_routing.add_argument("--default",
                                     help='The service version to use when no selectors apply (unversioned instances by default)')
     parser_set_routing.add_argument("--selector", action='append',

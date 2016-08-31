@@ -1,3 +1,21 @@
+Example 1: From A to B, route 20% of all requests to B(v2) and 80% to B(v1)
+
+CLI:
+a8ctl route-set B --source A --default v1 --selector 'v2(weight=0.2)'
+
+Curl:
+curl -i -X PUT http://localhost:31200/v1/rules/routes/B -H 'Content-type: application/json' -H 'Accept: application/json' --data '{"rules": [{"priority": 1, "route": {"backends": [{"weight": 0.2, "tags": ["v2"]}, {"tags": ["v1"]}]}, "match": {"source": {"name": "A"}}, "destination": "B"}]}'
+
+
+Example 2: From A to B, if request has HTTP header X-user-id: QA route to B(v2) else route to B(v1)
+
+CLI:
+a8ctl route-set B --source A --default v1 --selector 'v2(header=X-user-id:QA)'
+
+Curl:
+curl -i -X PUT http://localhost:31200/v1/rules/routes/B -H 'Content-type: application/json' -H 'Accept: application/json' --data '{"rules": [{"route": {"backends": [{"tags": ["v1"]}]}, "match": {"source": {"name": "A"}}, "destination": "B", "priority": 1}, {"route": {"backends": [{"tags": ["v2"]}]}, "match": {"headers": {"X-user-id": "QA"}, "source": {"name": "A"}}, "destination": "B", "priority": 2}]}'
+
+
 a8ctl route-set reviews --default v1
 
 [
