@@ -117,19 +117,19 @@ def main():
     # a8ctl rule-list
     parser_rules_list = \
         subparsers.add_parser('rule-list',
-                              description="List fault injection rules.",
-                              help="List fault injection rules."
+                              description="List fault injection rules (deprecated, see action-list).",
+                              help="List fault injection rules (deprecated, see action-list)."
                               )
     parser_rules_list.add_argument("--json",
                                    help='Output injection rules in JSON format', 
                                    action='store_true')
     parser_rules_list.set_defaults(func=commands.rules_list)
 
-    # a8ctl gremlin rule-set ...
+    # a8ctl rule-set ...
     parser_set_rules = \
         subparsers.add_parser('rule-set',
-                              description='Set a fault injection rule.',
-                              help='Set a fault injection rule.'
+                              description='Set a fault injection rule (deprecated, see action-add).',
+                              help='Set a fault injection rule (deprecated, see action-add).'
                               )
     parser_set_rules.set_defaults(func=commands.set_rule)
     parser_set_rules.add_argument("--source",
@@ -156,10 +156,51 @@ def main():
     # a8ctl rule-clear
     parser_clear_rules = \
         subparsers.add_parser('rule-clear',
-                              description='Clear all fault injection rules from the application.',
-                              help='Clear all fault injection rules from the application.'
+                              description='Clear all fault injection rules from the application (deprecated, use rule-delete).',
+                              help='Clear all fault injection rules from the application (deprecated, use rule-delete).'
                               )
     parser_clear_rules.set_defaults(func=commands.clear_rules)
+
+    # a8ctl action-list
+    parser_action_list = \
+        subparsers.add_parser('action-list',
+                              description="List action rules.",
+                              help="List action (e.g., fault injection) rules."
+                              )
+    parser_action_list.add_argument("--json",
+                                   help='Output action rules in JSON format', 
+                                   action='store_true')
+    parser_action_list.set_defaults(func=commands.action_list)
+
+    # a8ctl action-add ...
+    parser_add_action = \
+        subparsers.add_parser('action-add',
+                              description='Add an action rule.',
+                              help='Add an action (e.g., fault injection) rule.'
+                              )
+    parser_add_action.set_defaults(func=commands.add_action)
+    parser_add_action.add_argument("--source",
+                                  help='The source microservice name (with optional version tags)')
+    parser_add_action.add_argument("--destination",
+                                  help='The destination microservice name')
+    parser_add_action.add_argument("--header", action='append',
+                                  help='Filter requests containing a specific header. Usage: --header {header}:{pattern}')
+    parser_add_action.add_argument("--cookie", action='append',
+                                  help='Filter requests containing a specific key-value pair in a cookie. Usage: --cookie {key}={value}')
+    parser_add_action.add_argument("--action", action='append',
+                                  help='Perform the specified action on a percentage of requests to a version of the destination. Usage: --action {version}({weight}->{action})')
+    parser_add_action.add_argument("--priority",
+                                  help='The priority of this rule')
+
+    # a8ctl action-clear
+    parser_clear_actions = \
+        subparsers.add_parser('action-clear',
+                              description='Clear all action rules for a destination microservice.',
+                              help='Clear all action rules for a destination microservice.'
+                              )
+    parser_clear_actions.set_defaults(func=commands.clear_rules)
+    parser_clear_actions.add_argument("service",
+                                      help='The microservice name')
 
     # a8ctl rule-delete <id>
     parser_delete_rule = \
