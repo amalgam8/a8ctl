@@ -33,14 +33,14 @@ Commands
     a8ctl service-list
 
     a8ctl route-list
-    a8ctl route-set <service> [--default <version>] [--selector <version> "(" (weight "=" <weight> | user "=" <name> | header "=" <name> ":" <pattern>) ")"]*
+    a8ctl route-set <service> [--default <tags>] [--selector <tags> "(" (weight "=" <weight> | user "=" <name> | header "=" <name> ":" <pattern>) ")"]*
     a8ctl route-delete <service>
 
     a8ctl action-list
-    a8ctl action-add [--source <service>[":" <version>]] [--destination <service>] [--header <name> ":" <pattern>]* [--cookie <key> "=" <value>]* [--action <version> "(" <weight> "->" (delay "=" <seconds> | abort "=" <return_code>) ")"]* [--priority <number>]
+    a8ctl action-add [--source <service>[":" <tags>]] [--destination <service>] [--header <name> ":" <pattern>]* [--cookie <key> "=" <value>]* [--action <tags> "(" <probability> "->" (delay "=" <seconds> | abort "=" <return_code>) ")"]* [--priority <number>]
     a8ctl rule-delete <rule-id>
 
-    a8ctl traffic-start <service> <version> [--amount <percent>]
+    a8ctl traffic-start <service> <tags> [--amount <percent>]
     a8ctl traffic-step <service> [--amount <percent>]
     a8ctl traffic-abort <service>
 
@@ -83,14 +83,14 @@ Examples
     $ a8ctl action-add --source reviews:v2 --destination ratings --cookie user=jason --action 'v1(1->delay=7)'
     Set action rule for destination ratings
     
-    $ a8ctl action-add --source productpage:v1 --destination reviews --cookie user=jason --header Foo:bar --action 'v2(0.5->delay=5)' --action 'v1(1->abort=400)' --priority 15
+    $ a8ctl action-add --source productpage:v1 --destination reviews --cookie user=jason --header Foo:bar --action 'v2(0.5->delay=5)' --action 'v2(1->abort=400)' --priority 15
     Set action rule for destination reviews
 
     $ a8ctl action-list
     +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+
     | Destination | Source         | Headers                       | Priority | Actions                                | Rule Id                              |
     +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+
-    | reviews     | productpage:v1 | Foo:bar, Cookie:.*?user=jason | 15       | v2(0.5->delay=5.0), v1(1.0->abort=400) | 4ccad0c9-277f-49ae-89be-d900cf66a24d |
+    | reviews     | productpage:v1 | Foo:bar, Cookie:.*?user=jason | 15       | v2(0.5->delay=5.0), v2(1.0->abort=400) | 4ccad0c9-277f-49ae-89be-d900cf66a24d |
     | ratings     | reviews:v2     | Cookie:.*?user=jason          | 10       | v1(1.0->delay=7.0)                     | e76d79e6-8b3e-45a7-87e7-674480a92d7c |
     +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+    
 
@@ -113,11 +113,6 @@ Examples
     Transfer starting for reviews: diverting 10% of traffic from v1 to v2 
     $ a8ctl traffic-abort reviews
     Transfer aborted for reviews: all traffic reverted to v1
-
-Documentation
--------------
-
-Documentation is available at http://www.amalgam8.io/.
 
 Contributing
 ------------
