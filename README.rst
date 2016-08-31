@@ -33,12 +33,12 @@ Commands
     a8ctl service-list
 
     a8ctl route-list
-    a8ctl route-set <service> [--default <version>] [--selector <version> "(" <condition> ")"]*
+    a8ctl route-set <service> [--default <version>] [--selector <version> "(" (weight "=" <weight> | user "=" <name> | header "=" <name> ":" <pattern>) ")"]*
     a8ctl route-delete <service>
 
-    a8ctl rule-list
-    a8ctl rule-set --source <service> --destination <service> [--header <string>] [--patern <regexp>] [--delay-probability <float>] [--delay <float>] [--abort-probability <float>] [--abort-code <code>]
-    a8ctl rule-clear
+    a8ctl action-list
+    a8ctl action-add [--source <service>[":" <version>]] [--destination <service>] [--header <name> ":" <pattern>]* [--cookie <key> "=" <value>]* [--action <version> "(" <weight> "->" (delay "=" <seconds> | abort "=" <return_code>) ")"]* [--priority <number>]
+    a8ctl rule-delete <rule-id>
 
     a8ctl traffic-start <service> <version> [--amount <percent>]
     a8ctl traffic-step <service> [--amount <percent>]
@@ -58,8 +58,16 @@ Examples
     | ratings     | v1(1)               |
     | helloworld  | v1(2), v2(2)        |
     | details     | v1(1)               |
-    | serviceA    | UNVERSIONED(1)      |
     +-------------+---------------------+
+
+    $ a8ctl route-set productpage --default v1
+    Set routing rules for productpage productpage
+
+    $ a8ctl route-set helloworld --default v1 --selector 'v2(weight=0.25)'
+    Set routing rules for microservice helloworld
+    
+    $ a8ctl route-set reviews --default v1 --selector 'v2(user="frankb")' --selector 'v3(user="shriram")'
+    Set routing rules for microservice reviews
     
     $ a8ctl route-list
     +-------------+-----------------+---------------------------------------+
@@ -67,27 +75,27 @@ Examples
     +-------------+-----------------+---------------------------------------+
     | productpage | v1              |                                       |
     | reviews     | v1              | v2(user="frankb"), v3(user="shriram") |
-    | ratings     | v1              |                                       |
-    | details     | v1              |                                       |
+    | ratings     |                 |                                       |
+    | details     |                 |                                       |
     | helloworld  | v1              | v2(weight=0.25)                       |
-    | serviceA    | UNVERSIONED     |                                       |
     +-------------+-----------------+---------------------------------------+
     
-    $ a8ctl route-set reviews --default v1 --selector 'v2(user="frankb")' --selector 'v3(user="shriram")'
-    Set routing rules for microservice reviews
+    $ a8ctl action-add --source reviews:v2 --destination ratings --cookie user=jason --action 'v1(1->delay=7)'
+    Set action rule for destination ratings
     
-    $ a8ctl rule-list
-    +---------+-------------+----------------+----------------+-------------------+-------+-------------------+------------+
-    | Source  | Destination | Header         | Header Pattern | Delay Probability | Delay | Abort Probability | Abort Code |
-    +---------+-------------+----------------+----------------+-------------------+-------+-------------------+------------+
-    | reviews | ratings     | X-Gremlin-Test | *              | 0.5               | 7     | 0                 | 0          |
-    +---------+-------------+----------------+----------------+-------------------+-------+-------------------+------------+
-    
-    $ a8ctl rule-set --source reviews --destination ratings --header X-Gremlin-Test --pattern=\* --delay-probability 0.5 --delay 7
-    Set fault injection rule between reviews and ratings
+    $ a8ctl action-add --source productpage:v1 --destination reviews --cookie user=jason --header Foo=bar --action 'v2(0.5->delay=5)' --action 'v1(1->abort=400)' --priority 15
+    Set action rule for destination reviews
 
-    $ a8ctl rule-clear
-    Cleared fault injection rules from all microservices
+    $ a8ctl action-list
+    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+
+    | Destination | Source         | Headers                        | Priority | Actions                                | Rule Id                              |
+    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+
+    | reviews     | productpage:v1 | Cookie:.*?user=jason, Foo=bar: | 15       | v2(0.5->delay=5.0), v1(1.0->abort=400) | 4ccad0c9-277f-49ae-89be-d900cf66a24d |
+    | ratings     | reviews:v2     | Cookie:.*?user=jason           | 10       | v1(1.0->delay=7.0)                     | e76d79e6-8b3e-45a7-87e7-674480a92d7c |
+    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+    
+
+    $ a8ctl rule-delete e76d79e6-8b3e-45a7-87e7-674480a92d7c
+    Deleted rule with id: e76d79e6-8b3e-45a7-87e7-674480a92d7c
        
     $ a8ctl traffic-start reviews v2
     Transfer starting for reviews: diverting 10% of traffic from v1 to v2 

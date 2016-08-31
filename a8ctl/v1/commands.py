@@ -721,7 +721,7 @@ def delete_rule(args):
                   args.a8_controller_token,
                   showcurl=args.debug)
     fail_unless(r, 200)
-    print 'Deleted fault injection rule with id: %s' % args.id
+    print 'Deleted rule with id: %s' % args.id
 
 def _print_assertion_results(results):
     x = PrettyTable(["AssertionName", "Source", "Destination", "Result", "ErrorMsg"])
