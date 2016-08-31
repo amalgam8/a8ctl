@@ -83,16 +83,16 @@ Examples
     $ a8ctl action-add --source reviews:v2 --destination ratings --cookie user=jason --action 'v1(1->delay=7)'
     Set action rule for destination ratings
     
-    $ a8ctl action-add --source productpage:v1 --destination reviews --cookie user=jason --header Foo=bar --action 'v2(0.5->delay=5)' --action 'v1(1->abort=400)' --priority 15
+    $ a8ctl action-add --source productpage:v1 --destination reviews --cookie user=jason --header Foo:bar --action 'v2(0.5->delay=5)' --action 'v1(1->abort=400)' --priority 15
     Set action rule for destination reviews
 
     $ a8ctl action-list
-    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+
-    | Destination | Source         | Headers                        | Priority | Actions                                | Rule Id                              |
-    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+
-    | reviews     | productpage:v1 | Cookie:.*?user=jason, Foo=bar: | 15       | v2(0.5->delay=5.0), v1(1.0->abort=400) | 4ccad0c9-277f-49ae-89be-d900cf66a24d |
-    | ratings     | reviews:v2     | Cookie:.*?user=jason           | 10       | v1(1.0->delay=7.0)                     | e76d79e6-8b3e-45a7-87e7-674480a92d7c |
-    +-------------+----------------+--------------------------------+----------+----------------------------------------+--------------------------------------+    
+    +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+
+    | Destination | Source         | Headers                       | Priority | Actions                                | Rule Id                              |
+    +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+
+    | reviews     | productpage:v1 | Foo:bar, Cookie:.*?user=jason | 15       | v2(0.5->delay=5.0), v1(1.0->abort=400) | 4ccad0c9-277f-49ae-89be-d900cf66a24d |
+    | ratings     | reviews:v2     | Cookie:.*?user=jason          | 10       | v1(1.0->delay=7.0)                     | e76d79e6-8b3e-45a7-87e7-674480a92d7c |
+    +-------------+----------------+-------------------------------+----------+----------------------------------------+--------------------------------------+    
 
     $ a8ctl rule-delete e76d79e6-8b3e-45a7-87e7-674480a92d7c
     Deleted rule with id: e76d79e6-8b3e-45a7-87e7-674480a92d7c
