@@ -2,6 +2,8 @@
 
 ### New CLI Commands
 
+#### rule-create
+
 ```
 a8ctl rule-create -f rules.yaml|rules.json
 ```
@@ -9,10 +11,14 @@ Create one or more routing or action rules described
 by the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
 in the specified JSON or YAML file.
 
+#### rule-delete
+
 ```
 a8ctl rule-delete rule-id [rule-id ...]
 ```
 Delete the one or more rules with the specified rule-ids.
+
+#### rule-get
 
 ```
 a8ctl rule-get [-o json|yaml] rule-id
@@ -20,20 +26,28 @@ a8ctl rule-get [-o json|yaml] rule-id
 Output the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
 of rule with the specified rule-id in JSON or YAML format (YAML by default).
 
+#### route-list
+
 ```
 a8ctl route-list
 ```
 Output a table listing all of the currently defined routing-type rules.
+
+#### action-list
 
 ```
 a8ctl action-list
 ```
 Output a table listing all of the currently defined action-type rules.
 
+#### service-list
+
 ```
 a8ctl service-list
 ```
 Output a table listing all of the currently defined services along with any active instances of them.
+
+#### traffic-*
 
 ```
 a8ctl traffic-start service-name tags [--amount percent]
