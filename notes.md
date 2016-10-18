@@ -24,7 +24,7 @@ Delete the one or more rules with the specified rule-ids.
 a8ctl rule-get [-o json|yaml] rule-id
 ```
 Output the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
-of rule with the specified rule-id in JSON or YAML format (YAML by default).
+of the rule with the specified rule-id in JSON or YAML format (YAML by default).
 
 #### route-list
 
@@ -56,7 +56,13 @@ a8ctl traffic-abort service-name
 ```
 Start/stop/abort traffic to a new version of a service. Unchanged from OLD CLI.
 
+#### recipe-run
+
+a8ctl recipe-run --topology topology.json --scenarios scenarios.json --checks checks.json --header Cookie --pattern='user=jason'
+
 ### Examples
+
+#### rule-create
 
 OLD CLI:
 ```
@@ -178,4 +184,27 @@ $ cat <<EOF | a8ctl rule-create -f -
     - v1
     duration: 7
 EOF
+```
+
+#### action-list
+
+OLD CLI:
+```
+$ a8ctl action-list
++-------------+----------------+-------------------------------+----------+----------------------------------------+------------+
+| Destination | Source         | Headers                       | Priority | Actions                                | Rule Id    |
++-------------+----------------+-------------------------------+----------+----------------------------------------+------------+
+| reviews     | productpage:v1 | Foo:bar, Cookie:.*?user=jason | 15       | v2(0.5->delay=5.0), v2(1.0->abort=400) | my-action1 |
+| ratings     | reviews:v2     | Cookie:.*?user=jason          | 10       | v1(1.0->delay=7.0)                     | my-action2 |
++-------------+----------------+-------------------------------+----------+----------------------------------------+------------+    
+```
+NEW CLI ?????
+```
++-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
+| Destination | Rule Id    | Priority | Match                                                          | Actions                                                 |
++-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
+| reviews     | my-action1 | 15       | (source=productpage:v1, headers=Foo:bar, Cookie:.*?user=jason) | (action=delay, tags=v2, probability=0.5, duration=5),   |
+|             |            |          |                                                                | (action=abort, tags=v2, probability=1, return_code=400) |
+| ratings     | my-action2 | 10       | (source=reviews:v2, headers=Cookie:.*?user=jason)              | (action=delay, tags=v2, probability=1, duration=7)      |
++-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
 ```
