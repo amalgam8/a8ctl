@@ -22,6 +22,7 @@ import os
 import sys
 
 import commands # implementation of cli commands
+#import commands_GREMLINaaS as commands # implementation of cli commands
 
 def main():
     parser = argparse.ArgumentParser('a8ctl', description="""
@@ -54,6 +55,14 @@ def main():
     parser.add_argument('--a8-registry-token',
                         help='override $A8_REGISTRY_TOKEN with token of Amalgam8 Registry',
                         default=os.getenv('A8_REGISTRY_TOKEN', ''))
+
+    parser.add_argument('--a8-gremlin-url',
+                        help='override $A8_GREMLIN_URL with url of Amalgam8 Gremlin Service',
+                        #default=os.getenv('A8_GREMLIN_URL', 'http://localhost:31400'))
+                        default=os.getenv('A8_GREMLIN_URL', 'http://localhost:5000')) # TEMPORARY
+    parser.add_argument('--a8-gremlin-token',
+                        help='override $A8_GREMLIN_TOKEN with token of Amalgam8 Gremlin Service',
+                        default=os.getenv('A8_GREMLIN_TOKEN', ''))
 
     parser.add_argument('--a8-log-server',
                         help='override $A8_LOG_SERVER with log server for Amalgam8 log messages',

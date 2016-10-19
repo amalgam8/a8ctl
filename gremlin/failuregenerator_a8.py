@@ -142,6 +142,7 @@ class A8FailureGenerator(object):
 
         a8rule = {
             "destination": destination_name,
+            "tags": [ self._id ],
             "priority": 10,
             "match": {
                 "source": {
@@ -233,6 +234,7 @@ class A8FailureGenerator(object):
                 destination_name, destination_version = split_service(e[1])
                 log_rule = {
                     "destination": destination_name,
+                    "tags": [ self._id ],
                     "priority": 10,
                     "match": {
                         "source": {
