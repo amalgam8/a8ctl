@@ -42,14 +42,14 @@ def post_recipe():
         abort(400, "Failure scenarios required")
 
     if not header:
-        header = "X-Request-ID"
+        abort(400, "Header required")
 
     if not pattern:
-        pattern = '*'
+        abort(400, "Header_pattern required")
 
     appgraph = ApplicationGraph(topology)
     fg = A8FailureGenerator(appgraph, a8_controller_url='{0}/v1/rules'.format(a8_controller_url), a8_controller_token=a8_controller_token,
-                            header=header, pattern='.*?'+pattern, debug=debug)
+                            header=header, pattern=pattern, debug=debug)
     fg.setup_failures(scenarios)
     return make_response(jsonify(recipe_id=fg.get_id()), 201, {'location': url_for('get_recipe_results', recipe_id=fg.get_id())})
 
@@ -59,6 +59,7 @@ def get_recipe_results(recipe_id):
     #print json.dumps(payload, indent=2)
 
     checklist = payload.get("checklist")
+
     if not checklist:
         abort(400, "Checklist required")
     
@@ -77,6 +78,7 @@ def delete_recipe(recipe_id):
     headers = {}
     if a8_controller_token != "" :
         headers['Authorization'] = "Bearer " + token
+
     try:
         r = requests.delete(url, headers=headers)
     except Exception, e:
@@ -85,8 +87,10 @@ def delete_recipe(recipe_id):
         sys.stderr.write(str(e))
         sys.stderr.write("\n")
         abort(500, "Could not DELETE {0}".format(url))
-    if r.status_code != 200:
+        
+    if r.status_code != 200 and r.status_code != 204:
         abort(r.status_code)
+
     return ""
 
 if __name__ == '__main__':

@@ -749,7 +749,7 @@ def run_recipe(args):
         header = "X-Request-ID"
 
     if args.pattern:
-        pattern = args.pattern
+        pattern = '.*?'+args.pattern
     else:
         pattern = '*'
 
@@ -804,12 +804,6 @@ def run_recipe(args):
             print 'Inject test requests with HTTP header %s matching the pattern %s' % (header, pattern)
             print ('When done, press Enter key to continue to validation phase')
             a = sys.stdin.read(1)
-
-        #sleep for 3sec to make sure all logs reach elasticsearch
-        time.sleep(3)
-
-        end_time=datetime.datetime.utcnow().isoformat()
-        #print end_time
 
         #sleep for some more time to make sure all logs have been flushed
         time.sleep(5)
