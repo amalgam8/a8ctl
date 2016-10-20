@@ -35,7 +35,7 @@ setup(
         "prettytable",
         "decorator",
         'networkx',
-        'elasticsearch',
+        'elasticsearch==2.4.0',
         'elasticsearch_dsl',
         'isodate'
     ],
