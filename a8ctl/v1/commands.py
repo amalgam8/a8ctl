@@ -958,7 +958,7 @@ def create_rule(args):
                   json.dumps(payload),
                   showcurl=args.debug)
     fail_unless(r, 201)
-    ids = json.dumps(", ".join(r.json()["ids"]))
+    ids = ", ".join(r.json()["ids"])
     print 'Created rules with ids: %s' % ids
 
 def delete_rule(args):
