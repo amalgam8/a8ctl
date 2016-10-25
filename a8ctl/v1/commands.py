@@ -943,7 +943,7 @@ def traffic_abort(args):
     print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
 
 def create_rule(args):
-    if args.file:
+    if args.file and args.file != '-':
         rules = yaml.load(file)
     else:
         print "Enter Rules DSL (ctrl-d when finished):"

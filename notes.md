@@ -5,11 +5,12 @@
 #### rule-create
 
 ```
-a8ctl rule-create -f rules.yaml|rules.json
+a8ctl rule-create [ -f rules.yaml|rules.json ]
 ```
 Create one or more routing or action rules described 
 by the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
-in the specified JSON or YAML file.
+in the specified JSON or YAML file. If the value of the -f argument is a single dash
+character (that is, `-f -`) or no -f argument is specified, the Rules DSL is read from stdin.
 
 #### rule-delete
 
