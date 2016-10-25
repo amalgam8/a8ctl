@@ -951,7 +951,7 @@ def create_rule(args):
         rules = yaml.load(input_str)
     if not isinstance(rules, list):
         rules = [ rules ]
-    print json.dumps(rules)
+    #print json.dumps(rules)
     payload = {"rules": rules}
     r = a8_post('{}/v1/rules'.format(args.a8_controller_url),
                   args.a8_controller_token,
