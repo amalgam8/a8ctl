@@ -22,7 +22,6 @@ import os
 import sys
 
 import commands # implementation of cli commands
-#import commands_GREMLINaaS as commands # implementation of cli commands
 
 def main():
     parser = argparse.ArgumentParser('a8ctl', description="""
@@ -213,16 +212,6 @@ def main():
     parser_clear_actions.add_argument("service",
                                       help='The microservice name')
 
-    # a8ctl rule-delete <id>
-    parser_delete_rule = \
-        subparsers.add_parser('rule-delete',
-                              description='Delete a fault injection rule with the specified id.',
-                              help='Delete a fault injection rule with the specified id.'
-                              )
-    parser_delete_rule.set_defaults(func=commands.delete_rule)
-    parser_delete_rule.add_argument("id",
-                                    help='The rule id')
-
     # a8ctl gremlin recipe-run ...
     parser_run_recipe = \
         subparsers.add_parser('recipe-run',
@@ -286,6 +275,40 @@ def main():
     parser_traffic_abort.set_defaults(func=commands.traffic_abort)
     parser_traffic_abort.add_argument("service",
                                       help='The microservice name')
+    
+    # a8ctl rule-create -f rules.yaml|rules.json
+    parser_create_rule = \
+        subparsers.add_parser('rule-create',
+                              description='Create one or more routing or action rules.',
+                              help='Create one or more routing or action rules described using the A8 Rules DSL (see https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/).'
+                              )
+    parser_create_rule.set_defaults(func=commands.create_rule)
+    parser_create_rule.add_argument("-f", "--file",
+                                    help='YAML or JSON file containing a description of rules to create. Reads from stdin by default.')
+
+    # a8ctl rule-delete <id>
+    parser_delete_rule = \
+        subparsers.add_parser('rule-delete',
+                              description='Delete a routing or action rule with the specified id.',
+                              help='Delete a routing or action rule with the specified id.'
+                              )
+    parser_delete_rule.set_defaults(func=commands.delete_rule)
+    parser_delete_rule.add_argument("id",
+                                    help='The rule id')
+
+
+    parser_get_rule = \
+        subparsers.add_parser('rule-get',
+                              description='Print Rules DSL for the rule with the specicified id.',
+                              help='Print Rules DSL for the rule with the specicified id.'
+                              )
+    parser_get_rule.set_defaults(func=commands.get_rule)
+    parser_get_rule.add_argument("id",
+                                 help='The rule id')
+    parser_get_rule.add_argument("-o", "--output",
+                                 help='Output format of Rules DSL. Supported values are "json" or "yaml" (default)',
+                                 default="yaml")
+
 
     args = parser.parse_args()
     args.func(args)

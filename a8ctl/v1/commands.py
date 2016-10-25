@@ -17,6 +17,7 @@
 import sys
 import requests
 import json
+import yaml
 import sets
 from urlparse import urlparse
 from prettytable import PrettyTable
@@ -25,7 +26,6 @@ import urllib
 import datetime, time
 import pprint
 from parse import compile
-from gremlin import ApplicationGraph, A8FailureGenerator, A8AssertionChecker
 
 def passOrfail(result):
     if result:
@@ -716,13 +716,6 @@ def add_action(args):
     fail_unless(r, 201)
     print 'Set action rule for destination %s' % args.destination
 
-def delete_rule(args):
-    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
-                  args.a8_controller_token,
-                  showcurl=args.debug)
-    fail_unless(r, 200)
-    print 'Deleted rule with id: %s' % args.id
-
 def _print_assertion_results(results):
     x = PrettyTable(["AssertionName", "Source", "Destination", "Result", "ErrorMsg"])
     x.align = "l"
@@ -750,7 +743,7 @@ def run_recipe(args):
         header = "X-Request-ID"
 
     if args.pattern:
-        pattern = args.pattern
+        pattern = '.*?'+args.pattern
     else:
         pattern = '*'
 
@@ -767,8 +760,7 @@ def run_recipe(args):
         sys.exit(4)
 
     with open(args.topology) as fp:
-        app = json.load(fp)
-    topology = ApplicationGraph(app)
+        topology = json.load(fp)
     if args.debug:
         print "Using topology:\n", topology
 
@@ -779,13 +771,22 @@ def run_recipe(args):
         with open(args.checks) as fp:
             checklist = json.load(fp)
 
-    fg = A8FailureGenerator(topology, a8_controller_url='{0}/v1/rules'.format(args.a8_controller_url), a8_controller_token=args.a8_controller_token,
-                            header=header, pattern='.*?'+pattern, debug=args.debug)
-    fg.setup_failures(scenarios)
+    recipe = {
+        "topology": topology,
+        "scenarios": scenarios,
+        "header": header,
+        "header_pattern": pattern
+    }
+    
+    # Create recipe / add rules
+    r = a8_post('{0}/api/v1/recipes'.format(args.a8_gremlin_url),
+               args.a8_gremlin_token,
+               json.dumps(recipe),
+               showcurl=args.debug)
+    fail_unless(r, 201)
 
-    start_time = datetime.datetime.utcnow().isoformat()
-    #print start_time
-
+    results_url = r.headers.get("Location")
+    
     if args.checks:
         if args.run_load_script:
             import subprocess
@@ -798,26 +799,31 @@ def run_recipe(args):
             print ('When done, press Enter key to continue to validation phase')
             a = sys.stdin.read(1)
 
-        #sleep for 3sec to make sure all logs reach elasticsearch
-        time.sleep(3)
-
-        end_time=datetime.datetime.utcnow().isoformat()
-        #print end_time
-
         #sleep for some more time to make sure all logs have been flushed
         time.sleep(5)
 
-        log_server = checklist.get('log_server', args.a8_log_server)
+        checks = {
+            "checklist": checklist
+        }
+    
+        # Get the results
+        r = a8_post(results_url,
+                    args.a8_gremlin_token,
+                    json.dumps(checks),
+                    showcurl=args.debug)
+        fail_unless(r, 200)
 
-        # TODO: Obtain the logstash index as user input or use logstash-YYYY.MM.DD with current date and time.                                                                                                                              
-        ac = A8AssertionChecker(es_host=log_server, trace_log_value=fg.get_id(),
-                index=["_all"], debug=args.debug)      
-        results = ac.check_assertions(checklist, continue_on_error=True)
+        results = r.json()["results"]
         if args.json:
             print json.dumps(results, indent=2)
         else:
             _print_assertion_results(results)
-        clear_rules(args)
+            
+        # Delete recipe / remove rules
+        r = a8_delete(results_url,
+            args.a8_gremlin_token,
+            showcurl=args.debug)
+        fail_unless(r, 200)
 
 def traffic_start(args):
     if args.amount < 0 or args.amount > 100:
@@ -935,6 +941,44 @@ def traffic_abort(args):
                showcurl=args.debug)
     fail_unless(r, 200)
     print 'Transfer aborted for {}: all traffic reverted to {}'.format(args.service, default_version)
+
+def create_rule(args):
+    if args.file:
+        rules = yaml.load(file)
+    else:
+        print "Enter Rules DSL (ctrl-d when finished):"
+        input_str = sys.stdin.read()
+        rules = yaml.load(input_str)
+    if not isinstance(rules, list):
+        rules = [ rules ]
+    print json.dumps(rules)
+    payload = {"rules": rules}
+    r = a8_post('{}/v1/rules'.format(args.a8_controller_url),
+                  args.a8_controller_token,
+                  json.dumps(payload),
+                  showcurl=args.debug)
+    fail_unless(r, 201)
+    ids = json.dumps(", ".join(r.json()["ids"]))
+    print 'Created rules with ids: %s' % ids
+
+def delete_rule(args):
+    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
+                  args.a8_controller_token,
+                  showcurl=args.debug)
+    fail_unless(r, 200)
+    print 'Deleted rule with id: %s' % args.id
+
+def get_rule(args):
+    r = a8_get('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
+               args.a8_controller_token,
+               showcurl=args.debug)
+    fail_unless(r, 200)
+    rules = r.json()["rules"]
+    rule = rules[0]
+    if args.output == "yaml":
+        print yaml.dump(yaml.load(json.dumps(rule)))
+    else:
+        print json.dumps(rule, indent=2)
     
 '''    
 test_routing_rules = json.loads("""
