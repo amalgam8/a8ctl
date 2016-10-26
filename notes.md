@@ -10,7 +10,7 @@ a8ctl rule-create [ -f rules.yaml|rules.json ]
 Create one or more routing or action rules described 
 by the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
 in the specified JSON or YAML file. If the value of the -f argument is a single dash
-character (`-f -`) or no -f argument is specified, the Rules DSL is read from stdin.
+character (`-f -`) or no -f option is specified, the Rules DSL is read from stdin.
 
 #### rule-delete
 
@@ -22,10 +22,11 @@ Delete one or more rules with the specified rule ids, tags, or destinations.
 #### rule-get
 
 ```
-a8ctl rule-get [-o json|yaml] [-i id]* [-t tag]* [-d destination]*
+a8ctl rule-get [-o json|yaml] [-a] [-i id]* [-t tag]* [-d destination]*
 ```
 Output the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
 of one or more rules with the specified rule ids, tags, or destinations.
+If the -a option is specified, all defined rules are output.
 Rule DSL is output in YAML by default but can be changed using the -o option.
 
 #### route-list

@@ -313,6 +313,8 @@ def main():
                                  help='The rule tag')
     parser_get_rule.add_argument("-d", "--destination", action='append',
                                  help='The rule destination')
+    parser_get_rule.add_argument("-a", "--all", action='store_true', default=False,
+                                 help='Output all rules')
     parser_get_rule.add_argument("-o", "--output",
                                  help='Output format of Rules DSL. Supported values are "json" or "yaml" (default)',
                                  default="yaml")

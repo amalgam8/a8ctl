@@ -978,7 +978,9 @@ def delete_rule(args):
                       args.a8_controller_token,
                       showcurl=args.debug)
         fail_unless(r, 200)
-        print 'Deleted rule with id: %s' % args.id
+        #TODO: ids = ", ".join(r.json()["ids"])
+        #TODO: print 'Deleted rules with ids: %s' % ids
+        print 'Deleted rules'
 
 def get_rule(args):
     params = []
@@ -991,9 +993,9 @@ def get_rule(args):
     if args.destination:
         for destination in args.destination:
             params.append("destination=%s" % destination)
-    if params:
-        query = '&'.join(params)
-        r = a8_get('{}/v1/rules?{}'.format(args.a8_controller_url, query),
+    if params or args.all:
+        query = '?' + '&'.join(params) if not args.all else ''
+        r = a8_get('{}/v1/rules{}'.format(args.a8_controller_url, query),
                    args.a8_controller_token,
                    showcurl=args.debug)
         fail_unless(r, 200)
