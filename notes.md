@@ -15,14 +15,14 @@ character (`-f -`) or no -f argument is specified, the Rules DSL is read from st
 #### rule-delete
 
 ```
-a8ctl rule-delete [-r rule-id]* [-t tag]* [-d destination]*
+a8ctl rule-delete [-i id]* [-t tag]* [-d destination]*
 ```
-Delete the one or more rules with the specified rule ids, tags, or destinations.
+Delete one or more rules with the specified rule ids, tags, or destinations.
 
 #### rule-get
 
 ```
-a8ctl rule-get [-o json|yaml] [-r rule-id]* [-t tag]* [-d destination]*
+a8ctl rule-get [-o json|yaml] [-i id]* [-t tag]* [-d destination]*
 ```
 Output the [Rules DSL](https://www.amalgam8.io/docs/control-plane/controller/rules-dsl/)
 of one or more rules with the specified rule ids, tags, or destinations.

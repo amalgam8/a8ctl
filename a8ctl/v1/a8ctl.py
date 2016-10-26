@@ -276,7 +276,7 @@ def main():
     parser_traffic_abort.add_argument("service",
                                       help='The microservice name')
     
-    # a8ctl rule-create -f rules.yaml|rules.json
+    # a8ctl rule-create [ -f rules.yaml|rules.json ]
     parser_create_rule = \
         subparsers.add_parser('rule-create',
                               description='Create one or more routing or action rules.',
@@ -286,25 +286,33 @@ def main():
     parser_create_rule.add_argument("-f", "--file",
                                     help='YAML or JSON file containing a description of rules to create. Reads from stdin by default.')
 
-    # a8ctl rule-delete <id>
+    # a8ctl rule-delete [-i id]* [-t tag]* [-d destination]*
     parser_delete_rule = \
         subparsers.add_parser('rule-delete',
-                              description='Delete a routing or action rule with the specified id.',
-                              help='Delete a routing or action rule with the specified id.'
+                              description='Delete one or more rules with the specified rule ids, tags, or destinations.',
+                              help='Delete one or more rules with the specified rule ids, tags, or destinations.'
                               )
     parser_delete_rule.set_defaults(func=commands.delete_rule)
-    parser_delete_rule.add_argument("id",
+    parser_delete_rule.add_argument("-i", "--id", action='append',
                                     help='The rule id')
+    parser_delete_rule.add_argument("-t", "--tag", action='append',
+                                    help='The rule tag')
+    parser_delete_rule.add_argument("-d", "--destination", action='append',
+                                    help='The rule destination')
 
-
+    # a8ctl rule-get [-o json|yaml] [-i id]* [-t tag]* [-d destination]*
     parser_get_rule = \
         subparsers.add_parser('rule-get',
-                              description='Print Rules DSL for the rule with the specicified id.',
-                              help='Print Rules DSL for the rule with the specicified id.'
+                              description='Output the Rules DSL of one or more rules with the specified rule ids, tags, or destinations.',
+                              help='Output the Rules DSL of one or more rules with the specified rule ids, tags, or destinations.'
                               )
     parser_get_rule.set_defaults(func=commands.get_rule)
-    parser_get_rule.add_argument("id",
+    parser_get_rule.add_argument("-i", "--id", action='append',
                                  help='The rule id')
+    parser_get_rule.add_argument("-t", "--tag", action='append',
+                                 help='The rule tag')
+    parser_get_rule.add_argument("-d", "--destination", action='append',
+                                 help='The rule destination')
     parser_get_rule.add_argument("-o", "--output",
                                  help='Output format of Rules DSL. Supported values are "json" or "yaml" (default)',
                                  default="yaml")

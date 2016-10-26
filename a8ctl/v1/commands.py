@@ -962,23 +962,48 @@ def create_rule(args):
     print 'Created rules with ids: %s' % ids
 
 def delete_rule(args):
-    r = a8_delete('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
-                  args.a8_controller_token,
-                  showcurl=args.debug)
-    fail_unless(r, 200)
-    print 'Deleted rule with id: %s' % args.id
+    params = []
+    if args.id:
+        for id in args.id:
+            params.append("id=%s" % id)
+    if args.tag:
+        for tag in args.tag:
+            params.append("tag=%s" % tag)
+    if args.destination:
+        for destination in args.destination:
+            params.append("destination=%s" % destination)
+    if params:
+        query = '&'.join(params)
+        r = a8_delete('{}/v1/rules?{}'.format(args.a8_controller_url, query),
+                      args.a8_controller_token,
+                      showcurl=args.debug)
+        fail_unless(r, 200)
+        print 'Deleted rule with id: %s' % args.id
 
 def get_rule(args):
-    r = a8_get('{}/v1/rules?id={}'.format(args.a8_controller_url, args.id),
-               args.a8_controller_token,
-               showcurl=args.debug)
-    fail_unless(r, 200)
-    rules = r.json()["rules"]
-    rule = rules[0]
-    if args.output == "yaml":
-        print yaml.dump(yaml.load(json.dumps(rule)))
-    else:
-        print json.dumps(rule, indent=2)
+    params = []
+    if args.id:
+        for id in args.id:
+            params.append("id=%s" % id)
+    if args.tag:
+        for tag in args.tag:
+            params.append("tag=%s" % tag)
+    if args.destination:
+        for destination in args.destination:
+            params.append("destination=%s" % destination)
+    if params:
+        query = '&'.join(params)
+        r = a8_get('{}/v1/rules?{}'.format(args.a8_controller_url, query),
+                   args.a8_controller_token,
+                   showcurl=args.debug)
+        fail_unless(r, 200)
+        rules = r.json()["rules"]
+        if len(rules) == 1:
+            rules = rules[0] 
+        if args.output == "yaml":
+            print yaml.dump(yaml.load(json.dumps(rules)))
+        else:
+            print json.dumps(rules, indent=2)
     
 '''    
 test_routing_rules = json.loads("""
