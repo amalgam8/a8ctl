@@ -36,7 +36,7 @@ setup(
         "decorator",
         'networkx',
         'elasticsearch==2.4.0',
-        'elasticsearch_dsl',
+        'elasticsearch_dsl==2.1.0',
         'isodate'
     ],
     license='Apache Software License V2'
