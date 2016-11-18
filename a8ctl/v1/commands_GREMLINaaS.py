@@ -17,14 +17,12 @@
 import sys
 import requests
 import json
-import sets
-from urlparse import urlparse
 from prettytable import PrettyTable
 import os
-import urllib
-import datetime, time
-import pprint
+import time
 from parse import compile
+
+DEFAULT_TIMEOUT=15
 
 def passOrfail(result):
     if result:
@@ -32,7 +30,7 @@ def passOrfail(result):
     else:
         return "FAIL"
 
-def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}):
+def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}, timeout=DEFAULT_TIMEOUT):
     if token != "" :
         headers['Authorization'] = "Bearer " + token
     if extra_headers:
@@ -40,10 +38,11 @@ def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, e
 
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
-        print "curl", curl_headers, url
+        timeout = "--max-time %s" % timeout
+        print "curl %s --max-timeout %s %s" % (curl_headers, timeout, url)
 
     try:
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=timeout)
     except Exception, e:
         sys.stderr.write("Could not contact {0}".format(url))
         sys.stderr.write("\n")
@@ -56,7 +55,7 @@ def a8_get(url, token, headers={'Accept': 'application/json'}, showcurl=False, e
 
     return r
 
-def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-type': 'application/json'}, showcurl=False, extra_headers={}):
+def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-type': 'application/json'}, showcurl=False, extra_headers={}, timeout=DEFAULT_TIMEOUT):
     """
     @type body: str
     """
@@ -67,10 +66,11 @@ def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-ty
 
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
-        print "REQ:", "curl -i -X POST", url, curl_headers, "--data", '\'{0}\''.format(body.replace('\'', '\\\''))
+        data = '\'{0}\''.format(body.replace('\'', '\\\''))
+        print "REQ: curl -i -X POST %s %s --max-time %s --data %s" % (url, curl_headers, timeout, data)
 
     try:
-        r = requests.post(url, headers=headers, data=body)
+        r = requests.post(url, headers=headers, data=body, timeout=timeout)
     except Exception, e:
         sys.stderr.write("Could not POST to {0}".format(url))
         sys.stderr.write("\n")
@@ -84,7 +84,7 @@ def a8_post(url, token, body, headers={'Accept': 'application/json', 'Content-ty
 
     return r
 
-def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-type': 'application/json'}, showcurl=False, extra_headers={}):
+def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-type': 'application/json'}, showcurl=False, extra_headers={}, timeout=DEFAULT_TIMEOUT):
     """
     @type body: str
     """
@@ -96,10 +96,11 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
 
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
-        print "REQ:", "curl -i -X PUT", url, curl_headers, "--data", '\'{0}\''.format(body.replace('\'', '\\\''))
+        data = '\'{0}\''.format(body.replace('\'', '\\\''))
+        print "REQ: curl -i -X PUT %s %s --data %s --max-time %s" % (url, curl_headers, data, timeout)
 
     try:
-        r = requests.put(url, headers=headers, data=body)
+        r = requests.put(url, headers=headers, data=body, timeout=timeout)
     except Exception, e:
         sys.stderr.write("Could not PUT to {0}".format(url))
         sys.stderr.write("\n")
@@ -113,7 +114,7 @@ def a8_put(url, token, body, headers={'Accept': 'application/json', 'Content-typ
 
     return r
 
-def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}):
+def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False, extra_headers={}, timeout=DEFAULT_TIMEOUT):
     if token != "" :
         headers['Authorization'] = "Bearer " + token
     if extra_headers:
@@ -121,10 +122,10 @@ def a8_delete(url, token, headers={'Accept': 'application/json'}, showcurl=False
 
     if showcurl:
         curl_headers = ' '.join(["-H '{0}: {1}'".format(key, value) for key, value in headers.iteritems()])
-        print "curl -X DELETE", curl_headers, url
+        print "curl -X DELETE %s %s --max-time %s" % (curl_headers, url, timeout)
 
     try:
-        r = requests.delete(url, headers=headers)
+        r = requests.delete(url, headers=headers, timeout=timeout)
     except Exception, e:
         sys.stderr.write("Could not DELETE {0}".format(url))
         sys.stderr.write("\n")
@@ -783,7 +784,7 @@ def run_recipe(args):
         "header": header,
         "header_pattern": pattern
     }
-    
+
     # Create recipe / add rules
     r = a8_post('{0}/api/v1/recipes'.format(args.a8_gremlin_url),
                args.a8_gremlin_token,
