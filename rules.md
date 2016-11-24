@@ -1,161 +1,149 @@
-## Kubernetes Routing Rules
+## Service-mesh Routing Rules DSL Examples
 
 ### Example 1
 
-Send all traffic to v1 of the reviews service
-
+**Informal Grammar:**
 ```
-from * with urlPrefix:reviews
-  routeTo reviews:v1
+from *:env=staging,region=us-east
+  routeTo *:env=staging
 ```
 
+**Rule DSL:**
+```
+match:
+  source:
+    labels:
+      - env=staging
+      - region=us-east
+route:
+  - labels:
+    - env=staging
+```
+
+### Example 2
+
+**Informal Grammar:**
+```
+from serviceA:env=staging,experimental=true with url:/serviceB/api/v1
+  routeTo serviceB:env=prod
+```
+
+**Rule DSL:**
 ```
 match:
   destination:
-    urlPrefix: /reviews
+    urlPath: /serviceB/api/v1
+  source:
+    name: serviceA
+    labels:
+      - env=staging
+      - experimental=true
 route:
-    - name: reviews
-      labels:
-      - v1
+  - name: serviceB
+    labels:
+    - env=prod
 ```
 
-### Example 1
+### Example 3
 
-Send 25% of reviews service traffic to v2, the rest to v1
-
+**Informal Grammar:**
 ```
-from * with urlPrefix:reviews
-  routeTo reviews:v2 weight 25
-  routeTo reviews:v1
+from serviceA:env=prod with url:/serviceB/api/v1 
+  routeTo serviceB:env=prod,v1.1 weight 1
+  routeTo serviceB:env=prod,v1 weight 99
 ```
 
+**Rule DSL:**
 ```
 match:
   destination:
-    urlPrefix: /reviews
+    urlPath: /serviceB/api/v1
+  source:
+    name: serviceA
+    labels:
+      - env=prod
 route:
-    - name: reviews
-      labels:
-      - v1
-$ cat <<EOF | a8ctl rule-create -f -
-- destination: reviews
-  priority: 1
-  route:
-    backends:
-    - tags:
-      - v2
-      weight: 0.25
-    - tags:
-      - v1
-EOF
-```
-
-OLD CLI:
-```
-$ a8ctl route-set reviews --default v1 --selector 'v2(user="frankb")' --selector 'v3(user="shriram")'
-```
-NEW CLI:
-```
-$ cat <<EOF | a8ctl rule-create -f -
-- destination: reviews
-  priority: 3
-  match:
-    headers:
-      Cookie: ".*?user=frankb"
-  route:
-    backends:
-    - tags:
-      - v2
-- destination: reviews
-  priority: 2
-  match:
-    headers:
-      Cookie: ".*?user=shriram"
-  route:
-    backends:
-    - tags:
-      - v3
-- destination: reviews
-  priority: 1
-  route:
-    backends:
-    - tags:
-      - v1
-EOF
-```
-
-OLD CLI:
-```
-$ a8ctl route-set reviews --default v1 --selector 'v2(header="Foo:bar")' --selector 'v3(weight=0.5)'
-```
-NEW CLI:
-```
-$ cat <<EOF | a8ctl rule-create -f -
-- destination: reviews
-  priority: 2
-  match:
-    headers:
-      Foo: bar
-  route:
-    backends:
-    - tags:
-      - v2
-- destination: reviews
-  priority: 1
-  route:
-    backends:
-    - tags:
-      - v3
-      weight: 0.5
-    - tags:
-      - v1
-EOF
-```
-
-OLD CLI:
-```
-$ a8ctl rule-set --source reviews:v2 --destination ratings:v1 --header Cookie --pattern 'user=jason' --delay-probability 1.0 --delay 7
-```
-NEW CLI:
-```
-$ cat <<EOF | a8ctl rule-create -f -
-- destination: ratings
-  priority: 10
-  match:
-    source:
-      name: reviews
-      tags:
-      - v2
-    headers:
-      Cookie: ".*?user=jason"
-  actions:
-  - action: delay
-    probability: 1
-    tags:
+  - name: serviceB
+    labels:
+    - env=prod
+    - v1.1
+    weight: 1
+  - name: serviceB
+    labels:
+    - env=prod
     - v1
-    duration: 7
-EOF
+    weight: 99
 ```
 
-#### action-list
+### Example 4
 
-OLD CLI:
+**Informal Grammar:**
 ```
-$ a8ctl action-list
-+-------------+----------------+-------------------------------+----------+----------------------------------------+------------+
-| Destination | Source         | Headers                       | Priority | Actions                                | Rule Id    |
-+-------------+----------------+-------------------------------+----------+----------------------------------------+------------+
-| reviews     | productpage:v1 | Foo:bar, Cookie:.*?user=jason | 15       | v2(0.5->delay=5.0), v2(1.0->abort=400) | my-action1 |
-| ratings     | reviews:v2     | Cookie:.*?user=jason          | 10       | v1(1.0->delay=7.0)                     | my-action2 |
-+-------------+----------------+-------------------------------+----------+----------------------------------------+------------+    
+from * with header:Cookie=".*?user=tester1" 
+  routeTo serviceB:v1.1
 ```
-NEW CLI ?????
+
+**Rule DSL:**
 ```
-+-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
-| Destination | Rule Id    | Priority | Match                                                          | Actions                                                 |
-+-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
-| reviews     | my-action1 | 15       | (source=productpage:v1, headers=Foo:bar, Cookie:.*?user=jason) | (action=delay, tags=v2, probability=0.5, duration=5),   |
-|             |            |          |                                                                | (action=abort, tags=v2, probability=1, return_code=400) |
-| ratings     | my-action2 | 10       | (source=reviews:v2, headers=Cookie:.*?user=jason)              | (action=delay, tags=v2, probability=1, duration=7)      |
-+-------------+------------+----------+----------------------------------------------------------------+---------------------------------------------------------+
+match:
+  destination:
+    urlPath: /serviceB/api/v1
+  headers:
+    - name: Cookie
+      value: .*?user=tester1
+route:
+  - name: serviceB
+    labels:
+    - v1.1
+```
+
+### Example 5
+
+**Informal Grammar:**
+```
+from * with localhost:3306 
+  routeTo mysql-slave-5.6 weight 99
+  routeTo mysql-slave-5.7-test weight 1
+```
+
+**Rule DSL:**
+```
+match:
+  destination:
+    ipPort: localhost:3306
+route:
+  - name: mysql-slave-5.7-test
+    weight: 1
+  - name: mysql-slave-5.6
+    weight: 99
+```
+
+### More Examples
+
+#### Send all traffic to v1 of serviceA
+
+```
+match:
+  destination:
+    urlPrefix: serviceA
+route:
+  - name: serviceA
+    labels:
+    - v1
+```
+
+#### Send 25% of serviceA traffic to v2, the rest to v1
+
+```
+match:
+  destination:
+    urlPrefix: serviceA
+route:
+  - name: serviceA
+    labels:
+    - v2
+    weight: 25
+  - name: serviceA
+    labels:
+    - v1
 ```
