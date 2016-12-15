@@ -8,6 +8,7 @@ import logging
 import httplib
 import re
 import datetime, time
+import sys
 logging.basicConfig()
 requests_log = logging.getLogger("requests.packages.urllib3")
 

@@ -168,9 +168,9 @@ class A8AssertionChecker(object):
         # if self.time_range:
         #     body["filter"] = {"range" : self.time_range}
         if src:
-            body["query"]["bool"]["must"].append({"prefix": {"src": src}})
+            body["query"]["bool"]["must"].append({"match": {"src": src}})
         if dst:
-            body["query"]["bool"]["must"].append({"prefix": {"dst": dst}})
+            body["query"]["bool"]["must"].append({"match": {"dst": dst}})
         return body
 
     def check_bounded_response_time(self, **kwargs):
@@ -249,9 +249,9 @@ class A8AssertionChecker(object):
                     "filter": {
                         "bool": {
                             "must": [
-                                {"term": {"src": source}},
-                                {"prefix": {"dst": dest}},
-                                { "term": {self.trace_log_key: self.trace_log_value}}
+                                {"match": {"src": source}},
+                                {"match": {"dst": dest}},
+                                {"term": {self.trace_log_key: self.trace_log_value}}
                             ]
                         }
                     }
@@ -313,8 +313,8 @@ class A8AssertionChecker(object):
                     "filter": {
                         "bool": {
                             "must": [
-                                {"term": {"src": source}},
-                                {"prefix": {"dst": dest}},
+                                {"match": {"src": source}},
+                                {"match": {"dst": dest}},
                                 {"match": {self.trace_log_key: self.trace_log_value}}
                             ]
                         }
